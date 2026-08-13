@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -15,9 +14,6 @@ return new class extends Migration
             });
         }
 
-        DB::table('pembayaran')
-            ->whereNull('tanggal_kwitansi')
-            ->update(['tanggal_kwitansi' => DB::raw('tanggal_bayar')]);
     }
 
     public function down(): void

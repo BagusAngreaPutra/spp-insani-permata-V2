@@ -107,11 +107,6 @@ fi
 "${PHP_BIN}" artisan package:discover --ansi
 "${PHP_BIN}" artisan migrate --force
 
-KOPERASI_WORKBOOK="${APP_PATH}/barang2 dikoperasi. stok tgl 30.7.26.xlsx"
-if [[ -f "${KOPERASI_WORKBOOK}" ]]; then
-    "${PHP_BIN}" artisan koperasi:import-excel "${KOPERASI_WORKBOOK}"
-fi
-
 if [[ ! -e public/storage ]] && [[ ! -L public/storage ]]; then
     /bin/ln -s "${APP_PATH}/storage/app/public" "${APP_PATH}/public/storage"
 fi
