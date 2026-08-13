@@ -65,7 +65,7 @@
     }
 
     .payment-heading {
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
         gap: 24px;
     }
@@ -94,39 +94,71 @@
     }
 
     .payment-heading-actions {
+        align-items: center;
+        flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 8px;
+        gap: 10px;
     }
 
     .payment-year-switch {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        min-height: 38px;
-        padding: 0 10px;
+        flex: 0 0 auto;
+        gap: 0;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+        overflow: hidden;
         background: #fff;
-        border: 1px solid #d0d5dd;
-        border-radius: 7px;
+        border: 1px solid #d8dee9;
+        border-radius: 9px;
+        box-shadow: 0 2px 5px rgba(16, 24, 40, .04);
     }
 
-    .payment-year-switch label {
-        margin: 0;
-        color: #667085;
-        font-size: 10px;
-        font-weight: 600;
+    body:has(.app-sidebar) .main-content .payment-page .payment-year-switch label {
+        display: inline-flex !important;
+        align-items: center;
+        align-self: stretch;
+        gap: 6px;
+        margin: 0 !important;
+        padding: 0 11px !important;
+        color: #475467 !important;
+        background: #f8fafc !important;
+        border-right: 1px solid #e4e7ec !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
         white-space: nowrap;
     }
 
-    .payment-year-switch select {
-        min-width: 118px;
-        padding: 0 24px 0 0;
-        color: #101828;
-        background-color: transparent;
-        border: 0;
-        outline: 0;
+    body:has(.app-sidebar) .main-content .payment-page .payment-year-switch label i {
+        margin: 0 !important;
+        color: #3b82f6 !important;
+        font-size: 12px !important;
+    }
+
+    body:has(.app-sidebar) .main-content .payment-page .payment-year-switch select {
+        width: auto !important;
+        min-width: 166px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        padding: 0 38px 0 12px !important;
+        color: #101828 !important;
+        background-color: #fff !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        outline: 0 !important;
+        box-shadow: none !important;
         font: inherit;
-        font-size: 11px;
-        font-weight: 700;
+        font-size: 12.5px !important;
+        font-weight: 700 !important;
+        cursor: pointer;
+    }
+
+    body:has(.app-sidebar) .main-content .payment-page .payment-year-switch select:focus {
+        background-color: #f8fbff !important;
+        border: 0 !important;
+        outline: 0 !important;
+        box-shadow: inset 0 0 0 2px rgba(59, 130, 246, .15) !important;
     }
 
     .payment-button,
@@ -150,9 +182,20 @@
     }
 
     .payment-button {
-        min-height: 38px !important;
-        padding: 0 13px !important;
-        font-size: 11px !important;
+        min-height: 42px !important;
+        padding: 0 15px !important;
+        font-size: 12.5px !important;
+    }
+
+    body:has(.app-sidebar) .main-content .payment-page .payment-heading-actions .payment-button {
+        flex: 0 0 auto;
+        min-width: 166px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        padding: 0 15px !important;
+        border-radius: 9px !important;
+        font-size: 12.5px !important;
+        white-space: nowrap;
     }
 
     .payment-button.is-primary {
@@ -1382,15 +1425,21 @@
 
         .payment-heading-actions {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .payment-year-switch {
+            grid-column: 1 / -1;
             justify-content: space-between;
             width: 100%;
         }
 
-        .payment-button {
+        body:has(.app-sidebar) .main-content .payment-page .payment-year-switch select {
+            flex: 1 1 auto;
+        }
+
+        body:has(.app-sidebar) .main-content .payment-page .payment-heading-actions .payment-button {
+            min-width: 0 !important;
             width: 100% !important;
         }
 
@@ -1639,6 +1688,16 @@
         }
     }
 
+    @media (max-width: 520px) {
+        .payment-heading-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .payment-year-switch {
+            grid-column: auto;
+        }
+    }
+
     @media (max-width: 360px) {
         .payment-stats,
         .payment-student-details {
@@ -1670,7 +1729,10 @@
                 <div class="payment-heading-actions">
                     @if($academicYearData->isNotEmpty())
                         <form class="payment-year-switch" method="GET" action="{{ route('tagihan.proses.siswa', $siswa->id) }}">
-                            <label for="paymentAcademicYear">Tahun ajaran</label>
+                            <label for="paymentAcademicYear">
+                                <i class="fas fa-calendar-days" aria-hidden="true"></i>
+                                <span>Tahun ajaran</span>
+                            </label>
                             <select id="paymentAcademicYear" name="tahun_ajaran" onchange="this.form.submit()">
                                 @foreach($academicYearData as $tahun)
                                     <option value="{{ $tahun->id }}" {{ $selectedTahunAjaran?->id === $tahun->id ? 'selected' : '' }}>
@@ -1680,12 +1742,12 @@
                             </select>
                         </form>
                     @endif
-                    <a class="payment-button" href="{{ route('tagihan.index.grouped', ['sekolah' => $siswa->id_sekolah, 'kelas' => $siswa->kelas_id, 'tahun_ajaran' => $selectedTahunAjaran?->id]) }}">
+                    <a class="payment-button pi-tone-back" href="{{ route('tagihan.index.grouped', ['sekolah' => $siswa->id_sekolah, 'kelas' => $siswa->kelas_id, 'tahun_ajaran' => $selectedTahunAjaran?->id]) }}">
                         <i class="fas fa-arrow-left"></i>
                         <span>Kembali ke tagihan</span>
                     </a>
                     @if($canGenerate)
-                        <button class="payment-button is-primary" type="button" data-bs-toggle="modal" data-bs-target="#generateStudentModal">
+                        <button class="payment-button is-primary pi-tone-success" type="button" data-bs-toggle="modal" data-bs-target="#generateStudentModal">
                             <i class="fas fa-file-circle-plus"></i>
                             <span>Buat tagihan siswa</span>
                         </button>
