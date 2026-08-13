@@ -15,7 +15,11 @@ class KoperasiController extends Controller
         $sekolah = Sekolah::orderBy('nama_sekolah')->get();
         $selectedSekolah = $request->input('sekolah_id');
         $selectedKategori = $request->input('kategori');
+        $selectedJenisTransaksi = $request->input('jenis_transaksi');
         $selectedStatus = $request->input('status');
+        $selectedStatusStok = in_array($request->input('status_stok'), ['aman', 'menipis', 'habis'], true)
+            ? $request->input('status_stok')
+            : null;
         $search = $request->input('search');
 
         $query = Koperasi::with('sekolah')->latest();
@@ -28,8 +32,21 @@ class KoperasiController extends Controller
             $query->where('kategori', $selectedKategori);
         }
 
+        if (!empty($selectedJenisTransaksi)) {
+            $query->where('jenis_transaksi', $selectedJenisTransaksi);
+        }
+
         if (!empty($selectedStatus)) {
             $query->where('status', $selectedStatus);
+        }
+
+        if ($selectedStatusStok === 'habis') {
+            $query->where('stok', '<=', 0);
+        } elseif ($selectedStatusStok === 'menipis') {
+            $query->where('stok', '>', 0)
+                ->whereColumn('stok', '<=', 'stok_minimum');
+        } elseif ($selectedStatusStok === 'aman') {
+            $query->whereColumn('stok', '>', 'stok_minimum');
         }
 
         if (!empty($search)) {
@@ -49,7 +66,9 @@ class KoperasiController extends Controller
             'kategoriList',
             'selectedSekolah',
             'selectedKategori',
+            'selectedJenisTransaksi',
             'selectedStatus',
+            'selectedStatusStok',
             'search'
         ));
     }
@@ -174,7 +193,13 @@ class KoperasiController extends Controller
 
     private function validateData(Request $request, $id = null)
     {
-        $this->normalizeCurrencyFields($request, ['harga_beli', 'harga_jual']);
+        $this->normalizeCurrencyFields($request, [
+            'harga_beli',
+            'harga_jual',
+            'harga_sewa_siswa',
+            'harga_sewa_umum',
+            'harga_penggantian',
+        ]);
 
         $uniqueRule = 'unique:koperasi,kode_barang';
 
@@ -187,9 +212,13 @@ class KoperasiController extends Controller
             'kode_barang' => ['nullable', 'string', 'max:50', $uniqueRule],
             'nama_barang' => 'required|string|max:255',
             'kategori' => 'required|in:buku,seragam,alat_tulis,atribut,makanan_minuman,lainnya',
+            'jenis_transaksi' => 'required|in:jual,sewa',
             'satuan' => 'required|string|max:30',
             'harga_beli' => 'nullable|numeric|min:0',
             'harga_jual' => 'required|numeric|min:0',
+            'harga_sewa_siswa' => 'nullable|numeric|min:0',
+            'harga_sewa_umum' => 'nullable|numeric|min:0',
+            'harga_penggantian' => 'nullable|numeric|min:0',
             'stok' => 'required|integer|min:0',
             'stok_minimum' => 'required|integer|min:0',
             'deskripsi' => 'nullable|string',

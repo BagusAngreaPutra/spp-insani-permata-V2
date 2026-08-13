@@ -10,13 +10,16 @@ class Pembayaran extends Model
     protected $table = 'pembayaran';
 
     protected $fillable = [
+        'sekolah_id',
         'tagihan_id',
         'siswa_id',
         'jumlah_bayar',
         'diskon',  // ✅ Sudah ada
         'tanggal_bayar',
+        'tanggal_kwitansi',
         'keterangan',
         'periode',
+        'periode_tahun',
         'cicilan_ke',
         'total_cicilan',
         'metode_bayar',
@@ -29,6 +32,7 @@ class Pembayaran extends Model
         'jumlah_bayar' => 'decimal:2',
         'diskon' => 'decimal:2',        // ✅ TAMBAH INI
         'tanggal_bayar' => 'date',
+        'tanggal_kwitansi' => 'date',
         'cicilan_ke' => 'integer',
         'total_cicilan' => 'integer'
     ];
@@ -78,6 +82,8 @@ class Pembayaran extends Model
         parent::boot();
 
         static::creating(function ($pembayaran) {
+            $pembayaran->tanggal_kwitansi ??= $pembayaran->tanggal_bayar;
+
             // Jika nomor_kwitansi belum diatur
             if (!$pembayaran->nomor_kwitansi) {
                 $siswa = \App\Models\Siswa::find($pembayaran->siswa_id);

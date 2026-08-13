@@ -549,9 +549,11 @@ class TagihanController extends Controller
         $selectedKelas = $request->filled('kelas')
             ? $availableClasses->firstWhere('id', $request->integer('kelas'))
             : null;
+        $activeTahunAjaran = $academicYearData->firstWhere('aktif', true)
+            ?? $academicYearData->first();
         $selectedTahunAjaran = $request->filled('tahun_ajaran')
-            ? $academicYearData->firstWhere('id', $request->integer('tahun_ajaran'))
-            : null;
+            ? ($academicYearData->firstWhere('id', $request->integer('tahun_ajaran')) ?? $activeTahunAjaran)
+            : $activeTahunAjaran;
 
         $studentRows = Siswa::query()
             ->when(
@@ -669,6 +671,10 @@ class TagihanController extends Controller
     {
         $search = $request->get('search');
         $periodReconciler = app(TagihanPeriodReconciler::class);
+        $academicYearData = TahunAjaran::validPeriods();
+        $selectedTahunAjaran = $request->filled('tahun_ajaran')
+            ? $academicYearData->firstWhere('id', $request->integer('tahun_ajaran'))
+            : ($academicYearData->firstWhere('aktif', true) ?? $academicYearData->first());
         
         $query = \App\Models\Siswa::where('kelas_id', $kelasId)
             ->where('id_sekolah', $sekolahId);
@@ -681,8 +687,11 @@ class TagihanController extends Controller
             });
         }
         
-        $students = $query->with(['tagihan' => function($q) {
-            $q->with(['pembayaran', 'jenisPembayaran.tahunAjaran']);
+        $students = $query->with(['tagihan' => function($q) use ($selectedTahunAjaran) {
+            $q->when(
+                $selectedTahunAjaran,
+                fn ($tagihanQuery) => $tagihanQuery->where('tahun_ajaran_id', $selectedTahunAjaran->id)
+            )->with(['pembayaran', 'jenisPembayaran.tahunAjaran']);
         }])
         ->get()
         ->map(function($siswa) use ($periodReconciler) {
@@ -747,9 +756,20 @@ class TagihanController extends Controller
     {
         $siswa = \App\Models\Siswa::with(['kelas', 'sekolah', 'tahunAjaran'])->findOrFail($siswaId);
         $periodReconciler = app(TagihanPeriodReconciler::class);
+        $academicYearData = TahunAjaran::validPeriods();
+        $selectedTahunAjaran = $request->filled('tahun_ajaran')
+            ? $academicYearData->firstWhere('id', $request->integer('tahun_ajaran'))
+            : ($academicYearData->firstWhere('aktif', true)
+                ?? $academicYearData->firstWhere('id', $siswa->tahun_ajaran_id)
+                ?? $academicYearData->first());
 
-        // Get all tagihan for this student
+        // Secara default hanya tahun ajaran aktif yang ditampilkan. Tahun lama
+        // tetap dapat dibuka dari filter sebagai arsip/tunggakan terpisah.
         $tagihanData = \App\Models\Tagihan::where('siswa_id', $siswaId)
+            ->when(
+                $selectedTahunAjaran,
+                fn ($query) => $query->where('tahun_ajaran_id', $selectedTahunAjaran->id)
+            )
             ->with(['jenisPembayaran.tahunAjaran', 'pembayaran'])
             ->orderBy('nama_tagihan')
             ->orderBy('periode')
@@ -927,7 +947,13 @@ class TagihanController extends Controller
             'belum_jatuh_tempo' => $billItems->where('status', 'belum_jatuh_tempo')->count(),
         ];
 
-        return view('tagihan.proses_siswa', compact('siswa', 'tagihanList', 'studentSummary'));
+        return view('tagihan.proses_siswa', compact(
+            'siswa',
+            'tagihanList',
+            'studentSummary',
+            'academicYearData',
+            'selectedTahunAjaran'
+        ));
     }
 
 
@@ -1043,14 +1069,18 @@ class TagihanController extends Controller
     /**
      * Generate tagihan dari jenis pembayaran untuk siswa tertentu.
      */
-    private function autoGenerateTagihanForSiswa($siswaId)
+    private function autoGenerateTagihanForSiswa($siswaId, ?int $tahunAjaranId = null)
     {
         $siswa = Siswa::with('tahunAjaran')->findOrFail($siswaId);
+        $tahunAjaranId ??= TahunAjaran::query()->where('aktif', true)->value('id')
+            ?? $siswa->tahun_ajaran_id;
 
         // SPP mengikuti alur jenis pembayaran bulanan dan tidak dibuat khusus.
 
         // Generate dari jenis pembayaran yang eligible untuk siswa ini.
-        $jenisPembayaran = JenisPembayaran::with('tahunAjaran')->get();
+        $jenisPembayaran = JenisPembayaran::with('tahunAjaran')
+            ->when($tahunAjaranId, fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->get();
         $periodReconciler = app(TagihanPeriodReconciler::class);
         foreach ($jenisPembayaran as $jenis) {
             $periodReconciler->reconcileForStudent($jenis, $siswa);
@@ -1196,6 +1226,7 @@ class TagihanController extends Controller
             'pembayaran' => 'required|array',
             'pembayaran.*' => 'nullable|numeric|min:0',
             'tanggal_bayar' => 'required|date',
+            'tanggal_kwitansi' => 'required|date',
             'metode_bayar' => 'required|in:tunai,transfer,kjc,tabungan',
             'keterangan' => 'nullable|string|max:500',
             // Data diskon dari frontend
@@ -1208,6 +1239,8 @@ class TagihanController extends Controller
             'pembayaran.required' => 'Pilih minimal satu tagihan untuk dibayar.',
             'tanggal_bayar.required' => 'Tanggal bayar wajib diisi.',
             'tanggal_bayar.date' => 'Format tanggal tidak valid.',
+            'tanggal_kwitansi.required' => 'Tanggal kuitansi wajib diisi.',
+            'tanggal_kwitansi.date' => 'Format tanggal kuitansi tidak valid.',
             'metode_bayar.required' => 'Pilih metode pembayaran.',
             'metode_bayar.in' => 'Metode pembayaran tidak valid.',
         ]);
@@ -1328,6 +1361,7 @@ class TagihanController extends Controller
                     'jumlah_bayar' => $jumlahBayar,
                     'diskon' => $hasDiscount ? $discountAmount : 0,
                     'tanggal_bayar' => $request->tanggal_bayar,
+                    'tanggal_kwitansi' => $request->tanggal_kwitansi,
                     'metode_bayar' => $request->metode_bayar,
                     'keterangan' => $keteranganPembayaran,
                     'transaction_id' => $transactionId, // ✅ TAMBAHKAN TRANSACTION ID
@@ -1406,6 +1440,7 @@ class TagihanController extends Controller
                 'total_diskon' => $totalDiskonTransaksi,
                 'grand_total' => $totalBayarTransaksi + $totalDiskonTransaksi,
                 'tanggal_bayar' => $request->tanggal_bayar,
+                'tanggal_kwitansi' => $request->tanggal_kwitansi,
                 'metode_bayar' => $request->metode_bayar,
                 'keterangan' => $request->keterangan,
                 'admin' => \Illuminate\Support\Facades\Auth::user(),
@@ -1460,18 +1495,21 @@ class TagihanController extends Controller
     /**
      * Generate semua tagihan dari jenis pembayaran yang dikonfigurasi.
      */
-    private function autoGenerateAllTagihan()
+    private function autoGenerateAllTagihan(?int $tahunAjaranId = null)
     {
         // Tidak ada lagi generator SPP khusus.
-        $this->generateTagihanFromJenisPembayaran();
+        $this->generateTagihanFromJenisPembayaran($tahunAjaranId);
     }
 
     /**
      * Generate tagihan dari jenis pembayaran yang sudah ada
      */
-    private function generateTagihanFromJenisPembayaran()
+    private function generateTagihanFromJenisPembayaran(?int $tahunAjaranId = null)
     {
-        $jenisPembayaran = JenisPembayaran::with('tahunAjaran')->get();
+        $tahunAjaranId ??= TahunAjaran::query()->where('aktif', true)->value('id');
+        $jenisPembayaran = JenisPembayaran::with('tahunAjaran')
+            ->when($tahunAjaranId, fn ($query) => $query->where('tahun_ajaran_id', $tahunAjaranId))
+            ->get();
         $periodReconciler = app(TagihanPeriodReconciler::class);
 
         foreach ($jenisPembayaran as $jenis) {
@@ -1608,8 +1646,11 @@ class TagihanController extends Controller
      */
     public function generateTagihanManual(Request $request)
     {
+        $validated = $request->validate([
+            'tahun_ajaran_id' => ['nullable', 'integer', 'exists:tahun_ajaran,id'],
+        ]);
         // Hanya jenis pembayaran yang sudah dibuat oleh admin.
-        $this->autoGenerateAllTagihan();
+        $this->autoGenerateAllTagihan(isset($validated['tahun_ajaran_id']) ? (int) $validated['tahun_ajaran_id'] : null);
         
         // Log aktivitas
         LogAktivitas::create([
@@ -1628,8 +1669,14 @@ class TagihanController extends Controller
      */
     public function generateTagihanManualSiswa(Request $request, $siswaId)
     {
+        $validated = $request->validate([
+            'tahun_ajaran_id' => ['nullable', 'integer', 'exists:tahun_ajaran,id'],
+        ]);
         // Hanya jenis pembayaran yang sesuai untuk siswa ini.
-        $this->autoGenerateTagihanForSiswa($siswaId);
+        $this->autoGenerateTagihanForSiswa(
+            $siswaId,
+            isset($validated['tahun_ajaran_id']) ? (int) $validated['tahun_ajaran_id'] : null
+        );
         
         // Log aktivitas
         LogAktivitas::create([

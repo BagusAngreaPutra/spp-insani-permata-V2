@@ -64,6 +64,41 @@
         text-decoration: none;
     }
 
+    .page-actions .btn-sales {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.55rem !important;
+        min-height: 42px !important;
+        padding: 0.45rem 0.95rem !important;
+        color: #fff !important;
+        background: linear-gradient(135deg, #06b6d4, #2563eb) !important;
+        border: 1px solid #1677d2 !important;
+        border-radius: 9px !important;
+        box-shadow: 0 6px 14px rgba(37, 99, 235, 0.2) !important;
+        font-weight: 750 !important;
+        text-decoration: none !important;
+    }
+
+    .page-actions .btn-sales:hover {
+        color: #fff !important;
+        background: linear-gradient(135deg, #0891b2, #1d4ed8) !important;
+        transform: translateY(-1px);
+    }
+
+    .page-actions .btn-sales i {
+        display: grid !important;
+        place-items: center !important;
+        width: 25px !important;
+        height: 25px !important;
+        color: #fff !important;
+        background: rgba(255, 255, 255, 0.17) !important;
+        border: 1px solid rgba(255, 255, 255, 0.24) !important;
+        border-radius: 7px !important;
+        font-size: 0.78rem !important;
+        line-height: 1 !important;
+    }
+
     .filter-form {
         align-items: flex-end;
         border-radius: 18px;
@@ -129,14 +164,15 @@
         min-width: 980px;
     }
 
-    /* Kolom No dibuat kecil */
+    /* Kolom nomor tetap ringkas, tetapi beri ruang baca sedikit lebih lega. */
     .modern-table th:nth-child(1),
     .modern-table td:nth-child(1) {
-        width: 42px;
-        max-width: 42px;
+        width: 60px;
+        min-width: 60px;
+        max-width: 60px;
         text-align: center;
         padding-left: 0.5rem;
-        padding-right: 0.5rem;
+        padding-right: 1rem;
     }
 
     .modern-table th:nth-child(2),
@@ -215,6 +251,29 @@
         color: #475569;
     }
 
+    .koperasi-stock-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+    }
+
+    .koperasi-stock-amount {
+        color: #101828;
+        font-weight: 750;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .koperasi-stock-display .badge {
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .koperasi-stock-display .badge i {
+        font-size: 0.7rem;
+    }
+
+    .btn-stock,
     .btn-edit,
     .btn-delete {
         border: none;
@@ -223,6 +282,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 0.38rem;
         font-weight: 700;
         line-height: 1;
         min-height: 32px;
@@ -234,6 +294,23 @@
 
     .btn-edit {
         background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .btn-stock {
+        color: #fff !important;
+        background: linear-gradient(135deg, #06b6d4, #2878e8) !important;
+        border-color: #167bc7 !important;
+        box-shadow: 0 5px 12px rgba(22, 123, 199, 0.2) !important;
+    }
+
+    .btn-stock:hover {
+        color: #fff !important;
+        background: linear-gradient(135deg, #0891b2, #1d5fd1) !important;
+    }
+
+    .koperasi-actions :is(.btn-stock, .btn-edit, .btn-delete) i {
+        font-size: 0.78rem;
+        line-height: 1;
     }
 
     .btn-delete {
@@ -299,8 +376,9 @@
             </h2>
 
             <div class="page-actions">
-                <a href="{{ route('koperasi.penjualan.index') }}" class="btn btn-info">
-                    <i class="fas fa-cash-register"></i> Penjualan
+                <a href="{{ route('koperasi.penjualan.index') }}" class="btn btn-sales">
+                    <i class="fas fa-cart-shopping" aria-hidden="true"></i>
+                    <span>Penjualan</span>
                 </a>
 
                 <a href="{{ route('koperasi.create') }}" class="btn btn-primary">
@@ -335,11 +413,30 @@
             </div>
 
             <div class="form-group">
-                <label for="status">Status</label>
+                <label for="status">Status Barang</label>
                 <select name="status" id="status">
                     <option value="">Semua Status</option>
                     <option value="aktif" {{ $selectedStatus == 'aktif' ? 'selected' : '' }}>Aktif</option>
                     <option value="nonaktif" {{ $selectedStatus == 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="status_stok">Status Stok</label>
+                <select name="status_stok" id="status_stok">
+                    <option value="">Semua Status Stok</option>
+                    <option value="aman" {{ $selectedStatusStok === 'aman' ? 'selected' : '' }}>Aman</option>
+                    <option value="menipis" {{ $selectedStatusStok === 'menipis' ? 'selected' : '' }}>Menipis</option>
+                    <option value="habis" {{ $selectedStatusStok === 'habis' ? 'selected' : '' }}>Habis</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="jenis_transaksi">Jenis Transaksi</label>
+                <select name="jenis_transaksi" id="jenis_transaksi">
+                    <option value="">Semua Jenis</option>
+                    <option value="jual" {{ $selectedJenisTransaksi == 'jual' ? 'selected' : '' }}>Dijual</option>
+                    <option value="sewa" {{ $selectedJenisTransaksi == 'sewa' ? 'selected' : '' }}>Disewakan</option>
                 </select>
             </div>
 
@@ -370,8 +467,9 @@
                         <th>No</th>
                         <th>Barang</th>
                         <th>Kategori</th>
+                        <th>Jenis</th>
                         <th>Sekolah</th>
-                        <th>Harga Jual</th>
+                        <th>Harga / Tarif</th>
                         <th>Stok</th>
                         <th>Aksi</th>
                     </tr>
@@ -394,32 +492,51 @@
                             </td>
 
                             <td>
+                                {{ $item->jenis_transaksi === 'sewa' ? 'Sewa' : 'Jual' }}
+                            </td>
+
+                            <td>
                                 {{ $item->sekolah->nama_sekolah ?? '-' }}
                             </td>
 
                             <td>
-                                Rp {{ number_format($item->harga_jual, 0, ',', '.') }}
+                                @if($item->jenis_transaksi === 'sewa')
+                                    <strong>PIIS:</strong> Rp {{ number_format($item->harga_sewa_siswa ?? 0, 0, ',', '.') }}<br>
+                                    <small>Umum: Rp {{ number_format($item->harga_sewa_umum ?? 0, 0, ',', '.') }}</small>
+                                @else
+                                    Rp {{ number_format($item->harga_jual, 0, ',', '.') }}
+                                @endif
                             </td>
 
                             <td>
-                                {{ $item->stok }} {{ $item->satuan }}
-                                <br>
-                                <span class="badge badge-{{ $item->status_stok }}">
-                                    {{ ucfirst($item->status_stok) }}
-                                </span>
+                                @php
+                                    $stockIcon = match($item->status_stok) {
+                                        'aman' => 'fa-circle-check',
+                                        'menipis' => 'fa-triangle-exclamation',
+                                        default => 'fa-circle-xmark',
+                                    };
+                                @endphp
+                                <div class="koperasi-stock-display">
+                                    <span class="koperasi-stock-amount">{{ $item->stok }} {{ $item->satuan }}</span>
+                                    <span class="badge badge-{{ $item->status_stok }}">
+                                        <i class="fas {{ $stockIcon }}" aria-hidden="true"></i>
+                                        {{ ucfirst($item->status_stok) }}
+                                    </span>
+                                </div>
                             </td>
 
                             <td>
                                 <div class="koperasi-actions">
                                     <a
                                         href="{{ route('koperasi.stok.edit', $item->id) }}"
-                                        class="btn-edit"
-                                        style="background: linear-gradient(135deg, #25845d, #1d6b4c);"
+                                        class="btn-stock"
                                     >
+                                        <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
                                         Stok
                                     </a>
 
                                     <a href="{{ route('koperasi.edit', $item->id) }}" class="btn-edit">
+                                        <i class="fas fa-pen" aria-hidden="true"></i>
                                         Edit
                                     </a>
 
@@ -432,6 +549,7 @@
                                         @method('DELETE')
 
                                         <button type="submit" class="btn-delete">
+                                            <i class="fas fa-trash" aria-hidden="true"></i>
                                             Hapus
                                         </button>
                                     </form>
@@ -440,7 +558,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 @include('partials.admin-empty-state', [
                                     'icon' => 'fas fa-store',
                                     'title' => 'Belum Ada Barang Koperasi',

@@ -105,15 +105,15 @@ Route::middleware('auth:web')->group(function () {
     
 
     // Resource routes
-    Route::resource('admin', AdminController::class)->middleware('permission:admin.manage');
+    Route::resource('admin', AdminController::class)->except(['show'])->middleware('permission:admin.manage');
     Route::resource('sekolah', SekolahController::class)->middleware('permission:sekolah.manage,kelas.manage');
-    Route::resource('tahun_ajaran', TahunAjaranController::class)->middleware('permission:tahun_ajaran.manage');
-    Route::resource('kelas', KelasController::class)->middleware('permission:kelas.manage');
+    Route::resource('tahun_ajaran', TahunAjaranController::class)->except(['show'])->middleware('permission:tahun_ajaran.manage');
+    Route::resource('kelas', KelasController::class)->except(['show'])->middleware('permission:kelas.manage');
     Route::resource('siswa', SiswaController::class)->middleware('permission:siswa.manage');
     Route::get('/get-kelas-by-sekolah/{sekolah_id}', [SiswaController::class, 'getBySekolah'])
         ->middleware('permission:siswa.manage,tagihan.manage')
         ->name('siswa.kelas_by_sekolah');
-    Route::resource('jenis_pembayaran', JenisPembayaranController::class)->middleware('permission:jenis_pembayaran.manage');
+    Route::resource('jenis_pembayaran', JenisPembayaranController::class)->except(['show'])->middleware('permission:jenis_pembayaran.manage');
     Route::get('/jenis-pembayaran/get-data-by-sekolah/{sekolahId}', [JenisPembayaranController::class, 'getDataBySekolah'])
         ->middleware('permission:jenis_pembayaran.manage,tagihan.manage');
     Route::get('/koperasi/penjualan', [KoperasiPenjualanController::class, 'index'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.index');
@@ -141,14 +141,18 @@ Route::middleware('auth:web')->group(function () {
     // Riwayat & Kenaikan Kelas
     Route::get('/riwayat', [PembayaranController::class, 'index'])->middleware('permission:riwayat.view')->name('riwayat.index');
     Route::post('/pembayaran/store', [\App\Http\Controllers\PembayaranController::class, 'store'])->middleware('permission:pembayaran.process')->name('pembayaran.store');
+    Route::get('/pembayaran/koreksi/{id}', [PembayaranController::class, 'editCorrection'])->middleware('permission:pembayaran.process')->name('pembayaran.koreksi.edit');
+    Route::put('/pembayaran/koreksi/{id}', [PembayaranController::class, 'updateCorrection'])->middleware('permission:pembayaran.process')->name('pembayaran.koreksi.update');
     Route::get('/pembayaran/kwitansi/{id}', [PembayaranController::class, 'cetakKwitansi'])->middleware('permission:pembayaran.process,riwayat.view')->name('pembayaran.kwitansi');
+    Route::get('/pembayaran/kwitansi/{id}/pdf', [PembayaranController::class, 'unduhKwitansiPdf'])->middleware('permission:pembayaran.process,riwayat.view')->name('pembayaran.kwitansi.pdf');
     Route::get('/pembayaran/kwitansi-grup', [PembayaranController::class, 'cetakKwitansiGrup'])->middleware('permission:pembayaran.process,riwayat.view')->name('pembayaran.kwitansi.grup');
+    Route::get('/pembayaran/kwitansi-grup/pdf', [PembayaranController::class, 'unduhKwitansiGrupPdf'])->middleware('permission:pembayaran.process,riwayat.view')->name('pembayaran.kwitansi.grup.pdf');
     Route::get('/kenaikan-kelas', [KenaikanKelasController::class, 'index'])->middleware('permission:kenaikan.manage')->name('kenaikan.index');
     Route::post('/kenaikan-kelas/proses', [KenaikanKelasController::class, 'proses'])->middleware('permission:kenaikan.manage')->name('kenaikan.proses');
     Route::post('/kenaikan/cancel/{siswa_id}', [KenaikanKelasController::class, 'cancelPromotion'])->middleware('permission:kenaikan.manage')->name('kenaikan.cancel');
     
     Route::resource('pemasukan', \App\Http\Controllers\PemasukanController::class)->middleware('permission:pemasukan.manage');
-    Route::resource('pengeluaran', \App\Http\Controllers\PengeluaranController::class)->middleware('permission:pengeluaran.manage');
+    Route::resource('pengeluaran', \App\Http\Controllers\PengeluaranController::class)->except(['show'])->middleware('permission:pengeluaran.manage');
     Route::get('/keuangan-kas', [\App\Http\Controllers\KeuanganKasController::class, 'index'])
          ->middleware('permission:keuangan_kas.view')
          ->name('keuangan.kas.index');

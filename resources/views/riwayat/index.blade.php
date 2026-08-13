@@ -5,6 +5,8 @@
 
 @section('content')
 @php
+    $adminUser = Auth::guard('web')->user();
+    $canCorrectPayment = $adminUser?->hasPermission('pembayaran.process') ?? false;
     $formatRupiah = static fn ($amount) => 'Rp' . number_format((float) $amount, 0, ',', '.');
     $classLabel = static function ($kelas) {
         if (!$kelas) {
@@ -130,6 +132,30 @@
         color: #fff !important;
         background: #1d6b4c !important;
         border-color: #1d6b4c !important;
+    }
+
+    .history-button.is-warning {
+        color: #b54708 !important;
+        background: #fffaeb !important;
+        border-color: #fedf89 !important;
+    }
+
+    .history-button.is-warning:hover {
+        color: #93370d !important;
+        background: #fef0c7 !important;
+        border-color: #fec84b !important;
+    }
+
+    .history-button.is-pdf {
+        color: #b42318 !important;
+        background: #fef3f2 !important;
+        border-color: #fecdca !important;
+    }
+
+    .history-button.is-pdf:hover {
+        color: #912018 !important;
+        background: #fee4e2 !important;
+        border-color: #fda29b !important;
     }
 
     .history-button.is-compact {
@@ -541,6 +567,27 @@
         white-space: nowrap;
     }
 
+    .history-period-label,
+    .history-period-value {
+        display: block;
+    }
+
+    .history-period-label {
+        margin-bottom: 2px;
+        color: #98a2b3;
+        font-size: 7.5px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+    }
+
+    .history-period-value {
+        color: #344054;
+        font-size: 9.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
     .history-empty {
         display: grid;
         min-height: 250px;
@@ -769,6 +816,12 @@
                     <span>{{ session('success') }}</span>
                 </div>
             @endif
+            @if(session('error'))
+                <div class="history-alert" style="color:#b42318;background:#fef3f2;border-color:#fecdca">
+                    <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                    <span>{{ session('error') }}</span>
+                </div>
+            @endif
 
             <header class="history-heading">
                 <div>
@@ -910,6 +963,12 @@
                                 $receiptUrl = $isCooperative
                                     ? route('koperasi.penjualan.kwitansi', $tx['ids'])
                                     : route('pembayaran.kwitansi.grup', ['ids' => $tx['ids']]);
+                                $correctionUrl = !$isCooperative && $firstItem
+                                    ? route('pembayaran.koreksi.edit', $firstItem->id)
+                                    : null;
+                                $receiptPdfUrl = !$isCooperative
+                                    ? route('pembayaran.kwitansi.grup', ['ids' => $tx['ids'], 'download' => 1])
+                                    : null;
                                 $transactionValue = (float) $tx['total_bayar'] + (float) $tx['total_diskon'];
                             @endphp
 
@@ -933,8 +992,8 @@
 
                                     <div class="history-column" data-label="Tanggal">
                                         <span class="history-column-copy">
-                                            <strong>{{ \Carbon\Carbon::parse($tx['tanggal_bayar'])->translatedFormat('d M Y') }}</strong>
-                                            <span>{{ $tx['metode_bayar'] ?: 'Metode tidak dicatat' }}</span>
+                                            <strong>Bayar {{ \Carbon\Carbon::parse($tx['tanggal_bayar'])->translatedFormat('d M Y') }}</strong>
+                                            <span>Kuitansi {{ \Carbon\Carbon::parse($tx['tanggal_kwitansi'] ?? $tx['tanggal_bayar'])->translatedFormat('d M Y') }} · {{ $tx['metode_bayar'] ?: 'Metode tidak dicatat' }}</span>
                                         </span>
                                     </div>
 
@@ -960,10 +1019,22 @@
                                             <span class="history-detail-caption">{{ $items->count() }} item dalam transaksi {{ $reference }}</span>
                                         </div>
                                         <div class="history-detail-actions">
+                                            @if($canCorrectPayment && $correctionUrl)
+                                                <a class="history-button is-compact is-warning" href="{{ $correctionUrl }}">
+                                                    <i class="fas fa-pen-to-square" aria-hidden="true"></i>
+                                                    <span>Koreksi transaksi</span>
+                                                </a>
+                                            @endif
                                             <a class="history-button is-compact" href="{{ $receiptUrl }}" target="_blank" rel="noopener">
                                                 <i class="fas fa-print" aria-hidden="true"></i>
                                                 <span>Cetak kwitansi</span>
                                             </a>
+                                            @if($receiptPdfUrl)
+                                                <a class="history-button is-compact is-pdf" href="{{ $receiptPdfUrl }}" target="_blank" rel="noopener">
+                                                    <i class="fas fa-file-pdf" aria-hidden="true"></i>
+                                                    <span>Download PDF</span>
+                                                </a>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -980,6 +1051,19 @@
                                             </thead>
                                             <tbody>
                                                 @foreach($items as $item)
+                                                    @if(!$isCooperative)
+                                                        @php
+                                                            $historyBillPeriod = trim((string) ($item->tagihan?->periode ?? $item->periode ?? ''));
+                                                            $historyIsMonthlyBill = $item->tagihan?->tipe === 'bulanan';
+                                                            $historyPeriodLabel = $historyBillPeriod !== '' ? $historyBillPeriod : '-';
+
+                                                            if ($historyIsMonthlyBill && preg_match('/^\d{4}-\d{2}$/', $historyBillPeriod)) {
+                                                                $historyPeriodLabel = \Carbon\Carbon::createFromFormat('Y-m-d', $historyBillPeriod . '-01')
+                                                                    ->locale('id')
+                                                                    ->translatedFormat('F Y');
+                                                            }
+                                                        @endphp
+                                                    @endif
                                                     <tr>
                                                         @if($isCooperative)
                                                             <td><strong>{{ $item->nama_barang }}</strong></td>
@@ -989,7 +1073,10 @@
                                                             <td class="history-money"><strong>{{ $formatRupiah($item->subtotal) }}</strong></td>
                                                         @else
                                                             <td><strong>{{ $item->tagihan?->nama_tagihan ?? 'Tagihan dihapus' }}</strong></td>
-                                                            <td>{{ $item->tagihan?->periode ?? $item->periode ?? '-' }}</td>
+                                                            <td>
+                                                                <span class="history-period-label">{{ $historyIsMonthlyBill ? 'Bulan pembayaran' : 'Periode' }}</span>
+                                                                <strong class="history-period-value">{{ $historyPeriodLabel }}</strong>
+                                                            </td>
                                                             <td class="history-money">{{ $formatRupiah($item->jumlah_bayar + $item->diskon) }}</td>
                                                             <td class="history-money">{{ $item->diskon > 0 ? '- ' . $formatRupiah($item->diskon) : '—' }}</td>
                                                             <td class="history-money"><strong>{{ $formatRupiah($item->jumlah_bayar) }}</strong></td>

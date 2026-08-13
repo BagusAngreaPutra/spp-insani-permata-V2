@@ -8,7 +8,6 @@ use App\Models\Sekolah;
 use App\Models\TahunAjaran;
 use App\Models\LogAktivitas; // 👉 tambahkan
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -126,7 +125,7 @@ class SiswaController extends Controller
         'tahun_ajaran_id' => $request->tahun_ajaran_id,
         'nis'             => $request->nis,
         'username'        => $request->username,
-        'password'        => Hash::make($request->password),
+        'password'        => $request->password,
         'password_raw'    => $request->password,
         'nama'            => $request->nama,
         'alamat'          => $request->alamat,
@@ -241,7 +240,7 @@ class SiswaController extends Controller
         if ($request->filled('password')) {
             try {
                 // 🔥 Simpan password yang sudah di-hash
-                $dataUpdate['password'] = Hash::make($request->password);
+                $dataUpdate['password'] = $request->password;
 
                 // 🔥 Simpan juga password asli ke kolom password_raw
                 $dataUpdate['password_raw'] = $request->password;

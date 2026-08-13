@@ -11,6 +11,7 @@
     $selectedTarget = old('target_type', $editingJenis?->target_type ?? 'all');
     $selectedStudentIds = old('siswa_ids', $editingJenis?->siswa?->pluck('id')->all() ?? []);
     $selectedClassIds = old('kelas_ids', $editingJenis?->kelas?->pluck('id')->all() ?? []);
+    $submissionToken = old('submission_token', (string) \Illuminate\Support\Str::uuid());
     $oldDueDay = $oldType === 'bulanan' ? $oldDueDate : null;
     $oldDueMonth = $oldType === 'semester' ? $oldDueDate : null;
 
@@ -425,6 +426,7 @@
     }
     .payment-action-button.is-cancel { color: #fff; background: #e11d48; border: 1px solid #e11d48; }
     .payment-action-button.is-save { color: #fff; background: #16a34a; border: 1px solid #16a34a; box-shadow: 0 6px 14px rgba(22, 163, 74, .17); }
+    .payment-action-button.is-save:disabled { opacity: .68; cursor: wait; box-shadow: none; }
 
     @media (max-width: 900px) {
         .payment-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -484,6 +486,8 @@
                 @csrf
                 @if($isEdit)
                     @method('PUT')
+                @else
+                    <input type="hidden" name="submission_token" value="{{ $submissionToken }}">
                 @endif
 
                 <section class="payment-form-section">
@@ -684,6 +688,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const nominalInput = document.getElementById('nominal-pembayaran');
     const nominalWarning = document.getElementById('nominal-warning');
     const saveButton = document.getElementById('savePaymentType');
+    const saveButtonLabel = saveButton.innerHTML;
     const schoolSelect = document.getElementById('sekolah_id');
     const academicYearSelect = document.getElementById('tahun_ajaran_id');
     const targetRadios = Array.from(document.querySelectorAll('input[name="target_type"]'));
@@ -974,6 +979,11 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     form.addEventListener('submit', function (event) {
+        if (form.dataset.submitting === 'true') {
+            event.preventDefault();
+            return;
+        }
+
         if (!validateNominal()) {
             event.preventDefault();
             nominalInput.focus();
@@ -994,6 +1004,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         syncHiddenSelections('siswa_ids', selectedStudents, studentsList);
         syncHiddenSelections('kelas_ids', selectedClasses, classesList);
+
+        form.dataset.submitting = 'true';
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i>Menyimpan...';
+    });
+
+    window.addEventListener('pageshow', function () {
+        form.dataset.submitting = 'false';
+        saveButton.disabled = false;
+        saveButton.innerHTML = saveButtonLabel;
     });
 
     toggleDueField();

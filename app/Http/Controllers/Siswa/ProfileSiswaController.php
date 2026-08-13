@@ -54,12 +54,17 @@ class ProfileSiswaController extends Controller
         $siswa = auth('siswa')->user();
 
         // cek password lama
-        if (!Hash::check($request->current_password, $siswa->password)) {
+        $hashValid = Hash::check($request->current_password, (string) $siswa->password);
+        $legacyPasswordValid = is_string($siswa->password_raw)
+            && hash_equals($siswa->password_raw, (string) $request->current_password);
+
+        if (!$hashValid && !$legacyPasswordValid) {
             return back()->withErrors(['current_password' => 'Password lama tidak sesuai.']);
         }
 
         // update password
-        $siswa->password = Hash::make($request->new_password);
+        $siswa->password = $request->new_password;
+        $siswa->password_raw = $request->new_password;
         $siswa->save();
 
         // 📌 Log aktivitas update password

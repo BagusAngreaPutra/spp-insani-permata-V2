@@ -102,6 +102,31 @@
         font-weight: 600;
     }
 
+    .academic-year-filter {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+    }
+
+    .academic-year-filter label {
+        margin: 0;
+        color: #64748b;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .academic-year-filter select {
+        min-height: 40px;
+        padding: 0 2.25rem 0 .8rem;
+        color: #0f172a;
+        background-color: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        font: inherit;
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
     .badge-mendatang {
         background-color: #fff7d6;
         color: #a15c07;
@@ -111,6 +136,18 @@
         font-size: 0.75rem;
         font-weight: 600;
         white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+        .page-header {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .academic-year-filter {
+            justify-content: space-between;
+        }
     }
 </style>
 @endpush
@@ -123,6 +160,18 @@
             <h2 class="page-title">
                 <i class="fas fa-file-invoice-dollar"></i> Tagihan Saya
             </h2>
+            @if($academicYearData->isNotEmpty())
+                <form class="academic-year-filter" method="GET" action="{{ route('siswa.tagihan.index') }}">
+                    <label for="studentAcademicYear">Tahun ajaran</label>
+                    <select id="studentAcademicYear" name="tahun_ajaran" onchange="this.form.submit()">
+                        @foreach($academicYearData as $tahun)
+                            <option value="{{ $tahun->id }}" {{ $selectedTahunAjaran?->id === $tahun->id ? 'selected' : '' }}>
+                                {{ $tahun->label }}{{ $tahun->aktif ? ' · Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
         </div>
 
         <div class="table-container">

@@ -10,8 +10,12 @@ use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use App\Models\LogAktivitas;
 use App\Models\KoperasiPenjualan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 class PembayaranController extends Controller
@@ -57,6 +61,7 @@ class PembayaranController extends Controller
 
         $kelasList = Kelas::query()
             ->with('sekolah')
+            ->when($selectedSekolah, fn ($query) => $query->where('sekolah_id', $selectedSekolah))
             ->orderBy('sekolah_id')
             ->orderBy('tingkat')
             ->orderBy('nama_kelas')
@@ -141,6 +146,7 @@ class PembayaranController extends Controller
                     'total_diskon' => $group->sum(function ($item) { return $item->diskon ?? 0; }),
                     'siswa' => $group->first()->siswa,
                     'tanggal_bayar' => $group->first()->tanggal_bayar,
+                    'tanggal_kwitansi' => $group->first()->tanggal_kwitansi ?? $group->first()->tanggal_bayar,
                     'metode_bayar' => $group->first()->metode_bayar,
                     'keterangan' => $group->first()->keterangan,
                     'ids' => $group->pluck('id')->implode(','),
@@ -315,53 +321,266 @@ class PembayaranController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'siswa_id'      => 'required|exists:siswa,id',
             'tagihan_id'    => 'required|exists:tagihan,id',
-            'jumlah_bayar'  => 'required|numeric|min:0',
+            'jumlah_bayar'  => 'required|numeric|min:1',
             'tanggal_bayar' => 'required|date',
-            'metode_bayar'  => 'nullable|string|max:50',
+            'tanggal_kwitansi' => 'nullable|date',
+            'metode_bayar'  => 'nullable|in:tunai,transfer,kjc,tabungan',
             'keterangan'    => 'nullable|string',
             'bukti_bayar'   => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
-        $tagihan = Tagihan::findOrFail($request->tagihan_id);
+        DB::transaction(function () use ($request, $validated): void {
+            $tagihan = Tagihan::query()
+                ->with('siswa')
+                ->lockForUpdate()
+                ->findOrFail($validated['tagihan_id']);
 
-        // Hitung total cicilan dan cicilan ke
-        $existingCicilan = Pembayaran::where('tagihan_id', $tagihan->id)->count();
-        $cicilan_ke = $existingCicilan + 1;
-        $total_cicilan = $cicilan_ke;
+            if ((int) $tagihan->siswa_id !== (int) $validated['siswa_id']) {
+                throw ValidationException::withMessages([
+                    'siswa_id' => 'Tagihan yang dipilih bukan milik siswa tersebut.',
+                ]);
+            }
 
-        // Upload bukti bayar jika ada
-        $buktiPath = null;
-        if ($request->hasFile('bukti_bayar')) {
-            $buktiPath = $request->file('bukti_bayar')->store('bukti_bayar', 'public');
-        }
+            $totalCoverage = (float) Pembayaran::query()
+                ->where('tagihan_id', $tagihan->id)
+                ->selectRaw('COALESCE(SUM(jumlah_bayar + COALESCE(diskon, 0)), 0) AS total_coverage')
+                ->value('total_coverage');
+            $sisa = max(0, (float) $tagihan->nominal - $totalCoverage);
+            $jumlahBayar = (float) $validated['jumlah_bayar'];
 
-        $pembayaran = Pembayaran::create([
-            'sekolah_id'     => $tagihan->siswa->id_sekolah,
-            'tagihan_id'     => $tagihan->id,
-            'siswa_id'       => $tagihan->siswa_id,
-            'jumlah_bayar'   => $request->jumlah_bayar,
-            'tanggal_bayar'  => $request->tanggal_bayar,
-            'periode'        => $tagihan->periode,
-            'periode_tahun'  => $tagihan->periode_tahun,
-            'metode_bayar'   => $request->input('metode_bayar'),
-            'cicilan_ke'     => $cicilan_ke,
-            'total_cicilan'  => $total_cicilan,
-            'keterangan'     => $request->input('keterangan'),
-            'bukti_bayar'    => $buktiPath,
+            if ($sisa <= 0) {
+                throw ValidationException::withMessages([
+                    'jumlah_bayar' => 'Tagihan tersebut sudah lunas.',
+                ]);
+            }
+
+            if ($jumlahBayar > ($sisa + 0.01)) {
+                throw ValidationException::withMessages([
+                    'jumlah_bayar' => 'Jumlah pembayaran melebihi sisa tagihan sebesar Rp ' . number_format($sisa, 0, ',', '.') . '.',
+                ]);
+            }
+
+            $existingCicilan = Pembayaran::where('tagihan_id', $tagihan->id)->count();
+            $cicilanKe = $existingCicilan + 1;
+            $buktiPath = $request->hasFile('bukti_bayar')
+                ? $request->file('bukti_bayar')->store('bukti_bayar', 'public')
+                : null;
+
+            $pembayaran = Pembayaran::create([
+                'sekolah_id'     => $tagihan->siswa->id_sekolah,
+                'tagihan_id'     => $tagihan->id,
+                'siswa_id'       => $tagihan->siswa_id,
+                'jumlah_bayar'   => $jumlahBayar,
+                'tanggal_bayar'  => $validated['tanggal_bayar'],
+                'tanggal_kwitansi' => $validated['tanggal_kwitansi'] ?? $validated['tanggal_bayar'],
+                'periode'        => $tagihan->periode,
+                'periode_tahun'  => $tagihan->periode_tahun,
+                'metode_bayar'   => $validated['metode_bayar'] ?? null,
+                'cicilan_ke'     => $cicilanKe,
+                'total_cicilan'  => $cicilanKe,
+                'keterangan'     => $validated['keterangan'] ?? null,
+                'bukti_bayar'    => $buktiPath,
+            ]);
+
+            $tagihan->update([
+                'status' => ($jumlahBayar + $totalCoverage) >= (float) $tagihan->nominal ? 'lunas' : 'belum',
+            ]);
+
+            LogAktivitas::create([
+                'aktor_type' => 'admin',
+                'aktor_id'   => Auth::id(),
+                'aktivitas'  => 'Menambahkan pembayaran untuk siswa: ' . $pembayaran->siswa->nama,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Pembayaran berhasil ditambahkan.');
+    }
+
+    /**
+     * Tampilkan satu transaksi pembayaran yang akan dikoreksi.
+     * Pembayaran multi-tagihan selalu dikoreksi sebagai satu transaksi agar
+     * metode, tanggal, siswa, dan nomor kuitansinya tetap konsisten.
+     */
+    public function editCorrection(int $id)
+    {
+        $anchor = Pembayaran::findOrFail($id);
+        $payments = $this->correctionGroupQuery($anchor)
+            ->with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran', 'tagihan.tahunAjaran'])
+            ->orderBy('id')
+            ->get();
+
+        $students = Siswa::query()
+            ->with(['sekolah', 'kelas'])
+            ->orderBy('id_sekolah')
+            ->orderBy('nama')
+            ->get();
+
+        return view('riwayat.koreksi', [
+            'anchor' => $anchor,
+            'payments' => $payments,
+            'students' => $students,
+            'currentStudent' => $payments->first()?->siswa,
+            'transactionReference' => $anchor->transaction_id ?: ($anchor->nomor_kwitansi ?: '#' . $anchor->id),
         ]);
+    }
+
+    /**
+     * Koreksi transaksi tanpa menghapus riwayat pembayaran.
+     * Jika siswa diganti, pembayaran dipindahkan ke tagihan pasangan milik
+     * siswa tujuan (jenis, tahun ajaran, tipe, dan periode harus sama).
+     */
+    public function updateCorrection(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'siswa_id' => ['required', 'integer', 'exists:siswa,id'],
+            'tanggal_bayar' => ['required', 'date'],
+            'tanggal_kwitansi' => ['required', 'date'],
+            'metode_bayar' => ['required', 'in:tunai,transfer,kjc,tabungan'],
+            'keterangan' => ['nullable', 'string', 'max:1000'],
+            'alasan_koreksi' => ['required', 'string', 'min:5', 'max:1000'],
+        ], [
+            'alasan_koreksi.required' => 'Alasan koreksi wajib ditulis untuk jejak perubahan transaksi.',
+            'alasan_koreksi.min' => 'Alasan koreksi harus menjelaskan perubahan yang dilakukan.',
+        ]);
+
+        $result = DB::transaction(function () use ($id, $validated) {
+            $anchor = Pembayaran::query()->lockForUpdate()->findOrFail($id);
+            $payments = $this->correctionGroupQuery($anchor)
+                ->with(['siswa.sekolah', 'tagihan.jenisPembayaran', 'tagihan.tahunAjaran'])
+                ->lockForUpdate()
+                ->orderBy('id')
+                ->get();
+
+            if ($payments->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'transaction' => 'Transaksi pembayaran tidak ditemukan.',
+                ]);
+            }
+
+            $sourceStudentIds = $payments->pluck('siswa_id')->unique();
+            if ($sourceStudentIds->count() !== 1) {
+                throw ValidationException::withMessages([
+                    'siswa_id' => 'Transaksi lama berisi lebih dari satu siswa dan tidak dapat dikoreksi otomatis.',
+                ]);
+            }
+
+            $sourceStudent = $payments->first()->siswa;
+            $targetStudent = Siswa::with('sekolah')->lockForUpdate()->findOrFail((int) $validated['siswa_id']);
+            $isChangingStudent = (int) $sourceStudentIds->first() !== (int) $targetStudent->id;
+            $billAssignments = [];
+            $affectedBillIds = $payments->pluck('tagihan_id')->filter()->map(fn ($value) => (int) $value)->all();
+
+            if ($isChangingStudent) {
+                $additionalCredits = [];
+
+                foreach ($payments as $payment) {
+                    $sourceBill = Tagihan::query()->lockForUpdate()->find($payment->tagihan_id);
+
+                    if (!$sourceBill) {
+                        throw ValidationException::withMessages([
+                            'siswa_id' => 'Salah satu tagihan asal sudah tidak tersedia. Siswa transaksi tidak dapat dipindahkan otomatis.',
+                        ]);
+                    }
+
+                    $targetBillQuery = Tagihan::query()
+                        ->where('siswa_id', $targetStudent->id)
+                        ->where('jenis_pembayaran_id', $sourceBill->jenis_pembayaran_id)
+                        ->where('tahun_ajaran_id', $sourceBill->tahun_ajaran_id)
+                        ->where('tipe', $sourceBill->tipe)
+                        ->where('periode', $sourceBill->periode);
+
+                    if (!$sourceBill->jenis_pembayaran_id) {
+                        $targetBillQuery->where('nama_tagihan', $sourceBill->nama_tagihan);
+                    }
+
+                    $targetBill = $targetBillQuery->lockForUpdate()->first();
+
+                    if (!$targetBill) {
+                        throw ValidationException::withMessages([
+                            'siswa_id' => 'Tagihan pasangan "' . $this->receiptBillName($sourceBill) . '" tidak ditemukan pada siswa tujuan. Buat tagihan siswa tujuan terlebih dahulu.',
+                        ]);
+                    }
+
+                    $credit = (float) $payment->jumlah_bayar + (float) $payment->diskon;
+                    $additionalCredits[$targetBill->id] = ($additionalCredits[$targetBill->id] ?? 0) + $credit;
+                    $billAssignments[$payment->id] = $targetBill;
+                    $affectedBillIds[] = $targetBill->id;
+                }
+
+                foreach ($additionalCredits as $targetBillId => $additionalCredit) {
+                    $targetBill = collect($billAssignments)
+                        ->first(fn (Tagihan $bill) => (int) $bill->id === (int) $targetBillId)
+                        ?? Tagihan::findOrFail($targetBillId);
+                    $existingCredit = (float) Pembayaran::query()
+                        ->where('tagihan_id', $targetBillId)
+                        ->selectRaw('COALESCE(SUM(jumlah_bayar + COALESCE(diskon, 0)), 0) as total')
+                        ->value('total');
+
+                    if (($existingCredit + $additionalCredit) > ((float) $targetBill->nominal + 0.01)) {
+                        throw ValidationException::withMessages([
+                            'siswa_id' => 'Pembayaran tidak dapat dipindahkan karena tagihan "' . $this->receiptBillName($targetBill) . '" pada siswa tujuan akan melebihi nominal.',
+                        ]);
+                    }
+                }
+            }
+
+            $oldDescription = $this->paymentCorrectionDescription($payments);
+            $newReceiptNumber = null;
+
+            if ($isChangingStudent && (int) $sourceStudent?->id_sekolah !== (int) $targetStudent->id_sekolah) {
+                $newReceiptNumber = $targetStudent->sekolah?->getNextNomorKwitansi();
+            }
+
+            foreach ($payments as $payment) {
+                $targetBill = $billAssignments[$payment->id] ?? $payment->tagihan;
+
+                $payment->forceFill([
+                    'siswa_id' => $targetStudent->id,
+                    'sekolah_id' => $targetStudent->id_sekolah,
+                    'tagihan_id' => $targetBill?->id,
+                    'periode' => $targetBill?->periode ?? $payment->periode,
+                    'tanggal_bayar' => $validated['tanggal_bayar'],
+                    'tanggal_kwitansi' => $validated['tanggal_kwitansi'],
+                    'metode_bayar' => $validated['metode_bayar'],
+                    'keterangan' => $validated['keterangan'] ?? null,
+                    'nomor_kwitansi' => $newReceiptNumber ?: $payment->nomor_kwitansi,
+                ])->save();
+            }
+
+            Tagihan::query()
+                ->whereIn('id', array_values(array_unique($affectedBillIds)))
+                ->get()
+                ->each(fn (Tagihan $tagihan) => $this->syncBillPaymentStatus($tagihan));
+
+            $payments = $this->correctionGroupQuery($anchor->fresh())
+                ->with(['siswa.sekolah', 'tagihan'])
+                ->orderBy('id')
+                ->get();
+            $newDescription = $this->paymentCorrectionDescription($payments);
+            $reference = $anchor->transaction_id ?: ($payments->first()?->nomor_kwitansi ?: '#' . $anchor->id);
+
+            return compact('sourceStudent', 'targetStudent', 'oldDescription', 'newDescription', 'reference');
+        });
 
         LogAktivitas::create([
             'aktor_type' => 'admin',
-            'aktor_id'   => Auth::id(),
-            'aktivitas'  => 'Menambahkan pembayaran untuk siswa: ' . $pembayaran->siswa->nama,
+            'aktor_id' => Auth::id(),
+            'aktivitas' => 'Koreksi transaksi ' . $result['reference']
+                . '. Alasan: ' . $validated['alasan_koreksi']
+                . '. Sebelum: ' . $result['oldDescription']
+                . '. Sesudah: ' . $result['newDescription'],
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
 
-        return redirect()->back()->with('success', 'Pembayaran berhasil ditambahkan.');
+        return redirect()
+            ->route('riwayat.index')
+            ->with('success', 'Transaksi berhasil dikoreksi. Saldo tagihan dan kuitansi telah diperbarui.');
     }
 
     // Tambahan opsional bila ingin menghitung jumlah uang masuk dari cicilan
@@ -372,24 +591,35 @@ class PembayaranController extends Controller
 
     public function cetakKwitansi($id)
     {
+        return view('tagihan.kwitansi.receipt', [
+            'receipt' => $this->receiptForPayment((int) $id),
+        ]);
+    }
+
+    public function unduhKwitansiPdf($id)
+    {
+        return $this->downloadReceiptPdf($this->receiptForPayment((int) $id));
+    }
+
+    private function receiptForPayment(int $id): array
+    {
         $pembayaran = Pembayaran::with([
             'siswa' => function($query) {
                 $query->with(['kelas', 'sekolah']);
             },
             'tagihan' => function($query) {
-                $query->with('jenisPembayaran');
+                $query->with(['jenisPembayaran.tahunAjaran', 'tahunAjaran']);
             }
         ])->findOrFail($id);
 
         $tagihan = $pembayaran->tagihan;
-        $billName = $tagihan
-            ? convertBulanToIndonesia($tagihan->nama_tagihan)
-            : 'Pembayaran';
+        $billName = $this->receiptBillName($tagihan);
 
         $receipt = [
             'student' => $pembayaran->siswa,
             'number' => $pembayaran->nomor_kwitansi ?? str_pad((string) $pembayaran->id, 6, '0', STR_PAD_LEFT),
-            'date' => $pembayaran->tanggal_bayar,
+            'payment_date' => $pembayaran->tanggal_bayar,
+            'receipt_date' => $pembayaran->tanggal_kwitansi ?? $pembayaran->tanggal_bayar,
             'method' => $this->paymentMethodLabel($pembayaran->metode_bayar),
             'note' => $pembayaran->keterangan,
             'items' => [[
@@ -399,9 +629,10 @@ class PembayaranController extends Controller
             ]],
             'total_paid' => (float) $pembayaran->jumlah_bayar,
             'total_discount' => (float) $pembayaran->diskon,
+            'pdf_url' => route('pembayaran.kwitansi.pdf', ['id' => $pembayaran->id]),
         ];
 
-        return view('tagihan.kwitansi.receipt', compact('receipt'));
+        return $receipt;
     }
 
     public function cetakKwitansiGrup(Request $request)
@@ -412,33 +643,67 @@ class PembayaranController extends Controller
             return back()->with('error', 'Tidak ada data pembayaran yang dipilih.');
         }
 
-        $pembayaranItems = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan'])
+        return view('tagihan.kwitansi.receipt', [
+            'receipt' => $this->receiptForPaymentGroup($ids),
+        ]);
+    }
+
+    public function unduhKwitansiGrupPdf(Request $request)
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->query('ids'))));
+
+        if (empty($ids)) {
+            return back()->with('error', 'Tidak ada data pembayaran yang dipilih.');
+        }
+
+        return $this->downloadReceiptPdf($this->receiptForPaymentGroup($ids));
+    }
+
+    private function receiptForPaymentGroup(array $ids): array
+    {
+        $pembayaranItems = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran.tahunAjaran', 'tagihan.tahunAjaran'])
             ->whereIn('id', $ids)
             ->get();
 
         if ($pembayaranItems->isEmpty()) {
-            return back()->with('error', 'Data pembayaran tidak ditemukan.');
+            abort(404, 'Data pembayaran tidak ditemukan.');
         }
 
         $firstItem = $pembayaranItems->first();
         $receipt = [
             'student' => $firstItem->siswa,
             'number' => $firstItem->nomor_kwitansi ?? str_pad((string) $firstItem->id, 6, '0', STR_PAD_LEFT),
-            'date' => $firstItem->tanggal_bayar,
+            'payment_date' => $firstItem->tanggal_bayar,
+            'receipt_date' => $firstItem->tanggal_kwitansi ?? $firstItem->tanggal_bayar,
             'method' => $this->paymentMethodLabel($firstItem->metode_bayar),
             'note' => $firstItem->keterangan,
             'items' => $pembayaranItems->map(function (Pembayaran $item) {
                 return [
-                    'name' => convertBulanToIndonesia(optional($item->tagihan)->nama_tagihan ?? 'Tagihan dihapus'),
+                    'name' => $this->receiptBillName($item->tagihan),
                     'amount' => (float) $item->jumlah_bayar,
                     'discount' => (float) $item->diskon,
                 ];
             })->all(),
             'total_paid' => (float) $pembayaranItems->sum('jumlah_bayar'),
             'total_discount' => (float) $pembayaranItems->sum('diskon'),
+            'pdf_url' => route('pembayaran.kwitansi.grup.pdf', ['ids' => implode(',', $pembayaranItems->pluck('id')->all())]),
         ];
 
-        return view('tagihan.kwitansi.receipt', compact('receipt'));
+        return $receipt;
+    }
+
+    private function downloadReceiptPdf(array $receipt)
+    {
+        $safeNumber = Str::of((string) $receipt['number'])
+            ->replace(['/', '\\'], '-')
+            ->replaceMatches('/[^A-Za-z0-9._-]/', '-')
+            ->trim('-')
+            ->value();
+
+        return Pdf::loadView('tagihan.kwitansi.pdf', compact('receipt'))
+            ->setPaper('a4', 'portrait')
+            ->setOption('isRemoteEnabled', false)
+            ->download('kwitansi-' . ($safeNumber ?: 'pembayaran') . '.pdf');
     }
 
     private function paymentMethodLabel(?string $method): string
@@ -450,5 +715,81 @@ class PembayaranController extends Controller
             'tabungan' => 'Potongan tabungan',
             default => ucfirst((string) $method) ?: '-',
         };
+    }
+
+    private function correctionGroupQuery(Pembayaran $anchor)
+    {
+        return Pembayaran::query()->when(
+            filled($anchor->transaction_id),
+            fn ($query) => $query->where('transaction_id', $anchor->transaction_id),
+            fn ($query) => $query->whereKey($anchor->id)
+        );
+    }
+
+    private function syncBillPaymentStatus(Tagihan $tagihan): void
+    {
+        $applied = (float) $tagihan->pembayaran()
+            ->selectRaw('COALESCE(SUM(jumlah_bayar + COALESCE(diskon, 0)), 0) as total')
+            ->value('total');
+
+        $tagihan->update([
+            'status' => $applied + 0.01 >= (float) $tagihan->nominal ? 'lunas' : 'belum',
+        ]);
+    }
+
+    private function paymentCorrectionDescription($payments): string
+    {
+        $first = $payments->first();
+
+        if (!$first) {
+            return 'data tidak tersedia';
+        }
+
+        return implode(', ', [
+            'siswa ' . ($first->siswa?->nama ?? '-'),
+            'metode ' . $this->paymentMethodLabel($first->metode_bayar),
+            'tanggal bayar ' . optional($first->tanggal_bayar)->format('d-m-Y'),
+            'tanggal kuitansi ' . optional($first->tanggal_kwitansi ?? $first->tanggal_bayar)->format('d-m-Y'),
+            $payments->count() . ' tagihan',
+        ]);
+    }
+
+    /**
+     * Nama ringkas khusus kuitansi:
+     * - SPP ditulis per bulan (contoh: SPP AGUSTUS)
+     * - Activity School hanya memakai nama umum dan tahun ajaran.
+     */
+    private function receiptBillName(?Tagihan $tagihan): string
+    {
+        if (!$tagihan) {
+            return 'Tagihan dihapus';
+        }
+
+        $typeName = trim((string) ($tagihan->jenisPembayaran?->nama_pembayaran ?: $tagihan->nama_tagihan));
+
+        if (preg_match('/\bspp\b/i', $typeName)) {
+            $period = trim((string) $tagihan->periode);
+
+            if (preg_match('/^(\d{4})-(\d{2})$/', $period, $matches)) {
+                $monthName = Carbon::create((int) $matches[1], (int) $matches[2], 1)
+                    ->locale('id')
+                    ->translatedFormat('F');
+
+                return 'SPP ' . Str::upper($monthName);
+            }
+
+            return 'SPP';
+        }
+
+        if (Str::contains(Str::lower($typeName), 'activity school')) {
+            $academicYear = $tagihan->tahunAjaran?->label
+                ?? $tagihan->jenisPembayaran?->tahunAjaran?->label;
+
+            return $academicYear
+                ? 'Activity School - Tahun Ajaran ' . $academicYear
+                : 'Activity School';
+        }
+
+        return convertBulanToIndonesia($tagihan->nama_tagihan);
     }
 }

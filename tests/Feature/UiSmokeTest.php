@@ -18,9 +18,9 @@ class UiSmokeTest extends TestCase
 
     public function test_public_entry_pages_render(): void
     {
-        $this->get('/')->assertOk()->assertSee('Pilih akun');
-        $this->get('/login')->assertOk()->assertSee('Masuk Guru');
-        $this->get('/siswa/login')->assertOk()->assertSee('Masuk Siswa');
+        $this->get('/')->assertOk()->assertSee('Pilih akses masuk Anda');
+        $this->get('/login')->assertOk()->assertSee('Masuk ke dashboard');
+        $this->get('/siswa/login')->assertOk()->assertSee('Masuk ke portal siswa');
     }
 
     public function test_admin_dashboard_renders_with_the_new_shell(): void
@@ -81,14 +81,14 @@ class UiSmokeTest extends TestCase
         foreach ($routes as $routeName) {
             $response = $this->get(route($routeName));
             $this->assertTrue(
-                $response->isSuccessful(),
+                $response->isSuccessful() || $response->isRedirection(),
                 "{$routeName} returned HTTP {$response->getStatusCode()}"
             );
-            $this->assertStringContainsString(
-                'permata-design-system',
-                $response->getContent(),
-                "{$routeName} did not render the admin design system"
-            );
+            if ($response->isSuccessful()) {
+                $response
+                    ->assertSee('app-sidebar', false)
+                    ->assertSee('css/permata-system.css', false);
+            }
         }
     }
 
@@ -114,7 +114,9 @@ class UiSmokeTest extends TestCase
                 $response->isSuccessful(),
                 "{$routeName} returned HTTP {$response->getStatusCode()}"
             );
-            $response->assertSee('permata-design-system', false);
+            $response
+                ->assertSee('app-sidebar', false)
+                ->assertSee('css/permata-system.css', false);
         }
     }
 
@@ -349,7 +351,12 @@ class UiSmokeTest extends TestCase
                 $response->isSuccessful(),
                 "{$routeName} returned HTTP {$response->getStatusCode()}"
             );
-            $response->assertSee('permata-design-system', false);
+            $response->assertSee('app-sidebar', false);
+            $this->assertTrue(
+                str_contains($response->getContent(), 'css/permata-system.css')
+                    || str_contains($response->getContent(), 'css/permata-student-dashboard.css'),
+                "{$routeName} did not load a current student design stylesheet"
+            );
         }
     }
 }

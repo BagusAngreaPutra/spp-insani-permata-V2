@@ -243,7 +243,17 @@
             <div class="table-header">
                 <h3 class="table-title">Laporan Penjualan Koperasi</h3>
             </div>
-            <table class="modern-table">
+            <table class="modern-table cooperative-report-table">
+                <colgroup>
+                    <col class="report-col-number">
+                    <col class="report-col-date">
+                    <col class="report-col-transaction">
+                    <col class="report-col-student">
+                    <col class="report-col-school">
+                    <col class="report-col-items">
+                    <col class="report-col-quantity">
+                    <col class="report-col-total">
+                </colgroup>
                 <thead>
                     <tr>
                         <th>No</th>
@@ -279,8 +289,16 @@
                             <td>Rp {{ number_format($item->total, 0, ',', '.') }}</td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="8" class="empty-state">Belum ada data penjualan koperasi untuk filter ini.</td>
+                        <tr class="report-empty-row pi-sort-fixed" data-sort-fixed>
+                            <td colspan="8" class="report-table-empty">
+                                <div class="report-empty-content">
+                                    <span class="report-empty-icon" aria-hidden="true">
+                                        <i class="fas fa-cart-shopping"></i>
+                                    </span>
+                                    <strong>Belum ada penjualan koperasi</strong>
+                                    <span>Belum ditemukan transaksi untuk filter yang dipilih.</span>
+                                </div>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

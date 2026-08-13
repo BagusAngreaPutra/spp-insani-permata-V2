@@ -183,8 +183,10 @@ class LaporanPembayaranController extends Controller
         $sheet->setCellValue('J'.$rowSubtotal, 'Rp ' . number_format($subtotal['tabungan'] ?? 0, 0, ',', '.'));
         
         $sheet->getStyle('A'.$rowSubtotal.':J'.$rowSubtotal)->getFont()->setBold(true);
-        $sheet->getStyle('B'.$rowSubtotal.',E'.$rowSubtotal.',H'.$rowSubtotal.',J'.$rowSubtotal)->getFont()->getColor()
-            ->setARGB(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_DARKGREEN);
+        foreach (['B', 'E', 'H', 'J'] as $column) {
+            $sheet->getStyle($column.$rowSubtotal)->getFont()->getColor()
+                ->setARGB(\PhpOffice\PhpSpreadsheet\Style\Color::COLOR_DARKGREEN);
+        }
 
         // Header tabel
         $headerRow = $rowSubtotal + 2;

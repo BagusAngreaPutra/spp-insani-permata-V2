@@ -397,8 +397,23 @@
 
     .billing-table {
         width: 100% !important;
-        min-width: 850px !important;
+        min-width: 0 !important;
         border-collapse: collapse !important;
+        table-layout: fixed !important;
+    }
+
+    .billing-table .billing-col-student { width: 27%; }
+    .billing-table .billing-col-status { width: 15%; }
+    .billing-table .billing-col-count { width: 8%; }
+    .billing-table .billing-col-total { width: 14%; }
+    .billing-table .billing-col-paid { width: 12%; }
+    .billing-table .billing-col-remaining { width: 13%; }
+    .billing-table .billing-col-action { width: 11%; }
+
+    body:has(.app-sidebar) .main-content .billing-page .billing-table.pi-responsive-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
     }
 
     .billing-table th {
@@ -425,8 +440,11 @@
     }
 
     .billing-student {
+        width: 100%;
+        max-width: 100%;
         gap: 9px;
-        min-width: 190px;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .billing-student-avatar {
@@ -443,7 +461,11 @@
     }
 
     .billing-student-copy {
+        flex: 1 1 auto;
+        width: calc(100% - 40px);
+        max-width: calc(100% - 40px);
         min-width: 0;
+        overflow: hidden;
     }
 
     .billing-student-copy strong,
@@ -455,7 +477,7 @@
     }
 
     .billing-student-copy strong {
-        max-width: 230px;
+        max-width: 100%;
         color: #101828;
         font-size: 10.5px;
         font-weight: 650;
@@ -468,9 +490,14 @@
     }
 
     .billing-student-copy .billing-student-scope {
-        max-width: 270px;
+        max-width: 100%;
         color: #667085;
         font-size: 8.5px;
+    }
+
+    .billing-table .billing-student-cell {
+        min-width: 0 !important;
+        overflow: hidden !important;
     }
 
     .billing-status {
@@ -961,7 +988,6 @@
                         <div class="billing-field">
                             <label for="billingAcademicYear">Tahun ajaran</label>
                             <select id="billingAcademicYear" name="tahun_ajaran">
-                                <option value="" {{ !$selectedTahunAjaran ? 'selected' : '' }}>Semua tahun ajaran</option>
                                 @foreach($academicYearData as $tahun)
                                     <option value="{{ $tahun->id }}" {{ $selectedTahunAjaran?->id === $tahun->id ? 'selected' : '' }}>
                                         {{ $tahun->label }}{{ $tahun->aktif ? ' · Aktif' : '' }}
@@ -998,6 +1024,15 @@
 
                     <div class="billing-table-wrap">
                         <table class="billing-table">
+                            <colgroup>
+                                <col class="billing-col-student">
+                                <col class="billing-col-status">
+                                <col class="billing-col-count">
+                                <col class="billing-col-total">
+                                <col class="billing-col-paid">
+                                <col class="billing-col-remaining">
+                                <col class="billing-col-action">
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th>Siswa</th>
@@ -1060,6 +1095,7 @@
                                                 @if($student['total_tagihan'] === 0 && $canGenerate)
                                                     <form method="POST" action="{{ route('tagihan.generate.manual.siswa', $student['id']) }}" data-single-generate-form>
                                                         @csrf
+                                                        <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTahunAjaran?->id }}">
                                                         <button class="billing-row-action" type="submit">
                                                             <i class="fas fa-file-circle-plus"></i>
                                                             <span>Buat tagihan</span>
@@ -1067,7 +1103,7 @@
                                                     </form>
                                                 @elseif($canPay)
                                                     @php($hasActualOutstanding = (float) ($student['sisa_aktual'] ?? $student['sisa_bayar']) > 0)
-                                                    <a class="billing-row-action {{ $hasActualOutstanding ? 'is-primary' : '' }}" href="{{ route('tagihan.proses.siswa', $student['id']) }}">
+                                                    <a class="billing-row-action {{ $hasActualOutstanding ? 'is-primary' : '' }}" href="{{ route('tagihan.proses.siswa', ['siswaId' => $student['id'], 'tahun_ajaran' => $selectedTahunAjaran?->id]) }}">
                                                         <i class="fas {{ $hasActualOutstanding ? 'fa-credit-card' : 'fa-eye' }}"></i>
                                                         <span>{{ $hasActualOutstanding ? 'Bayar' : 'Lihat detail' }}</span>
                                                     </a>
@@ -1141,6 +1177,7 @@
                     <button type="button" class="billing-button" data-bs-dismiss="modal">Batal</button>
                     <form id="generateAllBillsForm" action="{{ route('tagihan.generate.manual') }}" method="POST">
                         @csrf
+                        <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTahunAjaran?->id }}">
                         <button class="billing-button is-primary" id="generateAllBillsButton" type="submit">
                             <i class="fas fa-file-circle-plus"></i>
                             <span>Buat tagihan sekarang</span>

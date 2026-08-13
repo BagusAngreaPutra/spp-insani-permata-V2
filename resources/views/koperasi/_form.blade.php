@@ -44,6 +44,15 @@
     </div>
 
     <div class="form-group">
+        <label for="jenis_transaksi">Jenis Transaksi</label>
+        <select name="jenis_transaksi" id="jenis_transaksi" required>
+            <option value="jual" {{ old('jenis_transaksi', $koperasi->jenis_transaksi ?? 'jual') == 'jual' ? 'selected' : '' }}>Dijual</option>
+            <option value="sewa" {{ old('jenis_transaksi', $koperasi->jenis_transaksi ?? 'jual') == 'sewa' ? 'selected' : '' }}>Disewakan</option>
+        </select>
+        @error('jenis_transaksi')<small>{{ $message }}</small>@enderror
+    </div>
+
+    <div class="form-group">
         <label for="harga_beli">Harga Beli</label>
         <input type="number" name="harga_beli" id="harga_beli" min="0" step="100" value="{{ old('harga_beli', $koperasi->harga_beli ?? 0) }}">
         @error('harga_beli')<small>{{ $message }}</small>@enderror
@@ -53,6 +62,24 @@
         <label for="harga_jual">Harga Jual</label>
         <input type="number" name="harga_jual" id="harga_jual" min="0" step="100" value="{{ old('harga_jual', $koperasi->harga_jual ?? 0) }}" required>
         @error('harga_jual')<small>{{ $message }}</small>@enderror
+    </div>
+
+    <div class="form-group">
+        <label for="harga_sewa_siswa">Tarif Sewa Siswa PIIS</label>
+        <input type="number" name="harga_sewa_siswa" id="harga_sewa_siswa" min="0" step="100" value="{{ old('harga_sewa_siswa', $koperasi->harga_sewa_siswa ?? '') }}" placeholder="Kosongkan untuk barang jual">
+        @error('harga_sewa_siswa')<small>{{ $message }}</small>@enderror
+    </div>
+
+    <div class="form-group">
+        <label for="harga_sewa_umum">Tarif Sewa Non-PIIS</label>
+        <input type="number" name="harga_sewa_umum" id="harga_sewa_umum" min="0" step="100" value="{{ old('harga_sewa_umum', $koperasi->harga_sewa_umum ?? '') }}" placeholder="Kosongkan untuk barang jual">
+        @error('harga_sewa_umum')<small>{{ $message }}</small>@enderror
+    </div>
+
+    <div class="form-group">
+        <label for="harga_penggantian">Biaya Kehilangan</label>
+        <input type="number" name="harga_penggantian" id="harga_penggantian" min="0" step="100" value="{{ old('harga_penggantian', $koperasi->harga_penggantian ?? '') }}" placeholder="Jika tercantum">
+        @error('harga_penggantian')<small>{{ $message }}</small>@enderror
     </div>
 
     <div class="form-group">

@@ -57,6 +57,7 @@ class KoperasiPenjualanController extends Controller
 
         $barang = Koperasi::with('sekolah')
             ->where('status', 'aktif')
+            ->where('jenis_transaksi', 'jual')
             ->orderBy('nama_barang')
             ->get();
 
@@ -98,6 +99,12 @@ class KoperasiPenjualanController extends Controller
                 if ($barang->status !== 'aktif') {
                     throw ValidationException::withMessages([
                         'items' => "Barang {$barang->nama_barang} sedang nonaktif.",
+                    ]);
+                }
+
+                if ($barang->jenis_transaksi !== 'jual') {
+                    throw ValidationException::withMessages([
+                        'items' => "{$barang->nama_barang} merupakan barang sewa dan tidak dapat dicatat sebagai penjualan.",
                     ]);
                 }
 

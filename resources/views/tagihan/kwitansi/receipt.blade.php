@@ -11,7 +11,10 @@
     $paidTotal = (float) $receipt['total_paid'];
     $discountTotal = (float) $receipt['total_discount'];
     $transactionTotal = $paidTotal + $discountTotal;
-    $paidAt = $receipt['date'] ? \Carbon\Carbon::parse($receipt['date']) : now();
+    $paymentDate = $receipt['payment_date'] ?? $receipt['date'] ?? null;
+    $receiptDate = $receipt['receipt_date'] ?? $paymentDate;
+    $paidAt = $paymentDate ? \Carbon\Carbon::parse($paymentDate) : now();
+    $receiptAt = $receiptDate ? \Carbon\Carbon::parse($receiptDate) : $paidAt;
     $isGrouped = $items->count() > 1;
     $formatRupiah = static fn ($amount) => 'Rp' . number_format((float) $amount, 0, ',', '.');
     $className = trim((string) ($student?->kelas?->nama_kelas ?? ''));
@@ -24,6 +27,8 @@
     $showNote = $rawNote !== ''
         && !preg_match('/^Pembayaran multi-tagihan(?:\s+\(Diskon:.*\))?$/i', $rawNote);
     $spelledAmount = ucfirst(trim(terbilang((int) $paidTotal))) . ' rupiah';
+    $pdfFilename = 'kwitansi-' . trim((string) preg_replace('/[^A-Za-z0-9._-]+/', '-', str_replace(['/', '\\'], '-', (string) $receipt['number'])), '-') . '.pdf';
+    $autoDownloadPdf = request()->boolean('download');
 @endphp
 
 @push('page-styles')
@@ -239,6 +244,10 @@
         padding: 12px 0;
         border-top: 1px solid #d7d7d7;
         border-bottom: 1px solid #d7d7d7;
+    }
+
+    .receipt-meta.is-with-receipt-date {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .receipt-meta-item {
@@ -672,6 +681,18 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .receipt-meta.is-with-receipt-date {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .receipt-meta.is-with-receipt-date .receipt-meta-item:last-child {
+            grid-column: auto;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: 0;
+            border-left: 1px solid #e2e2e2;
+        }
+
         .receipt-meta-item:last-child {
             grid-column: 1 / -1;
             margin-top: 12px;
@@ -968,9 +989,72 @@
         .receipt-document-footer {
             margin-top: 16px;
         }
+
+        /* Aturan akhir khusus kuitansi pembayaran: A4 potret, bukan landscape. */
+        @page {
+            size: 210mm 297mm;
+            margin: 12mm;
+        }
+
+        html,
+        body {
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: none !important;
+        }
+
+        body:has(.app-sidebar) .receipt-page,
+        body:has(.app-sidebar) .receipt-paper.pi-receipt-document {
+            width: 186mm !important;
+            min-width: 0 !important;
+            max-width: 186mm !important;
+            margin: 0 auto !important;
+            overflow: visible !important;
+        }
+
+        body:has(.app-sidebar) .receipt-paper.pi-receipt-document .receipt-table {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+        }
     }
 </style>
 @endpush
+
+{{--
+    Harus berada di body (setelah permata-system.css) agar aturan laporan global
+    A4 landscape tidak menimpa orientasi kuitansi pembayaran.
+--}}
+<style id="receipt-print-page-override">
+    body:has(.app-sidebar) .receipt-paper.pi-receipt-document.is-pdf-export {
+        width: 186mm !important;
+        min-width: 186mm !important;
+        max-width: 186mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    body:has(.app-sidebar) .receipt-paper.pi-receipt-document.is-pdf-export .receipt-table-wrap {
+        overflow: visible !important;
+    }
+
+    body:has(.app-sidebar) .receipt-paper.pi-receipt-document.is-pdf-export .receipt-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+    }
+
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 12mm;
+        }
+    }
+</style>
 
 <div class="main-content">
     @include('layouts.header')
@@ -987,6 +1071,15 @@
                     <a class="receipt-button" href="{{ route('tagihan.proses.siswa', $student->id) }}">
                         <span>Kembali ke siswa</span>
                     </a>
+                    <button
+                        class="receipt-button"
+                        type="button"
+                        data-download-receipt-pdf
+                        data-filename="{{ $pdfFilename }}"
+                        data-fallback-url="{{ $receipt['pdf_url'] }}"
+                    >
+                        <span>Unduh PDF</span>
+                    </button>
                     <button class="receipt-button is-primary" type="button" onclick="window.print()">
                         <span>Cetak kwitansi</span>
                     </button>
@@ -1015,10 +1108,14 @@
                     </div>
                 </header>
 
-                <section class="receipt-meta" aria-label="Informasi transaksi">
+                <section class="receipt-meta is-with-receipt-date" aria-label="Informasi transaksi">
                     <div class="receipt-meta-item">
                         <span>Tanggal pembayaran</span>
                         <strong>{{ $paidAt->translatedFormat('d F Y') }}</strong>
+                    </div>
+                    <div class="receipt-meta-item">
+                        <span>Tanggal kuitansi</span>
+                        <strong>{{ $receiptAt->translatedFormat('d F Y') }}</strong>
                     </div>
                     <div class="receipt-meta-item">
                         <span>Metode pembayaran</span>
@@ -1125,7 +1222,7 @@
                     </div>
 
                     <div class="receipt-signature">
-                        <span class="receipt-signature-date">Jambi, {{ $paidAt->translatedFormat('d F Y') }}</span>
+                        <span class="receipt-signature-date">Jambi, {{ $receiptAt->translatedFormat('d F Y') }}</span>
                         <div class="receipt-signature-line">Petugas administrasi</div>
                     </div>
                 </footer>
@@ -1138,4 +1235,72 @@
         </div>
     </div>
 </div>
+
+<script src="{{ asset('js/html2pdf.bundle.min.js') }}?v=0.10.1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const button = document.querySelector('[data-download-receipt-pdf]');
+        const receipt = document.querySelector('[data-receipt-document]');
+
+        if (!button || !receipt) return;
+
+        button.addEventListener('click', async () => {
+            if (typeof window.html2pdf !== 'function') {
+                window.location.href = button.dataset.fallbackUrl;
+                return;
+            }
+
+            const originalLabel = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span>Menyiapkan PDF...</span>';
+            receipt.classList.add('is-pdf-export');
+
+            try {
+                if (document.fonts && document.fonts.ready) {
+                    await document.fonts.ready;
+                }
+
+                await window.html2pdf()
+                    .set({
+                        margin: [12, 12, 12, 12],
+                        filename: button.dataset.filename || 'kwitansi-pembayaran.pdf',
+                        image: { type: 'jpeg', quality: 1 },
+                        html2canvas: {
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: false,
+                            backgroundColor: '#ffffff',
+                            logging: false,
+                            scrollX: 0,
+                            scrollY: 0,
+                            // Pertahankan breakpoint desktop seperti tampilan kuitansi print.
+                            windowWidth: Math.max(window.innerWidth, 1200),
+                        },
+                        jsPDF: {
+                            unit: 'mm',
+                            format: 'a4',
+                            orientation: 'portrait',
+                            compress: true,
+                        },
+                        pagebreak: { mode: ['css', 'legacy'] },
+                    })
+                    .from(receipt)
+                    .save();
+            } catch (error) {
+                console.error('Gagal membuat PDF kuitansi:', error);
+                window.location.href = button.dataset.fallbackUrl;
+            } finally {
+                receipt.classList.remove('is-pdf-export');
+                button.disabled = false;
+                button.innerHTML = originalLabel;
+            }
+        });
+
+        @if($autoDownloadPdf)
+            // Tautan Download PDF dari riwayat membuka dokumen yang sama lalu
+            // langsung mengekspor elemen kuitansi dengan layout cetaknya.
+            window.setTimeout(() => button.click(), 150);
+        @endif
+    });
+</script>
 @endsection

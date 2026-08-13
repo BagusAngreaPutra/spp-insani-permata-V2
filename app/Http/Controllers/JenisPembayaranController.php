@@ -11,9 +11,12 @@ use App\Models\Tagihan;
 use App\Models\TahunAjaran;
 use App\Services\TagihanPeriodReconciler;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class JenisPembayaranController extends Controller
 {
@@ -75,8 +78,22 @@ class JenisPembayaranController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizePaymentName($request);
         $this->normalizeCurrencyFields($request, ['nominal']);
         $this->normalizeDueDateForAcademicYear($request);
+
+        $submissionToken = (string) $request->validate([
+            'submission_token' => ['required', 'uuid'],
+        ])['submission_token'];
+
+        $existingSubmission = JenisPembayaran::where('submission_token', $submissionToken)->first();
+
+        if ($existingSubmission) {
+            return redirect()->route('jenis_pembayaran.index')->with(
+                'success',
+                'Jenis pembayaran sudah tersimpan. Permintaan ganda tidak diproses kembali.'
+            );
+        }
 
         $validated = $request->validate([
             'sekolah_id'      => 'required|exists:sekolah,id',
@@ -89,7 +106,16 @@ class JenisPembayaranController extends Controller
                     }
                 },
             ],
-            'nama_pembayaran' => 'required|string|max:255',
+            'nama_pembayaran' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('jenis_pembayaran', 'nama_pembayaran')->where(
+                    fn ($query) => $query
+                        ->where('sekolah_id', $request->input('sekolah_id'))
+                        ->where('tahun_ajaran_id', $request->input('tahun_ajaran_id'))
+                ),
+            ],
             'tipe'            => 'required|in:sekali,bulanan,setahun,semester', // ✅ TAMBAH semester
             'nominal'         => 'required|numeric|min:0',
             'jatuh_tempo'     => $this->dueDateRules($request),
@@ -98,37 +124,55 @@ class JenisPembayaranController extends Controller
             'siswa_ids.*'     => 'exists:siswa,id',
             'kelas_ids'       => 'required_if:target_type,specific_classes|array',
             'kelas_ids.*'     => 'exists:kelas,id',
+        ], [
+            'nama_pembayaran.unique' => 'Nama pembayaran tersebut sudah ada untuk sekolah dan tahun ajaran yang dipilih.',
         ]);
 
-        DB::beginTransaction();
+        $validated['submission_token'] = $submissionToken;
+
         try {
-            $data = JenisPembayaran::create($validated);
+            DB::transaction(function () use ($request, $validated): void {
+                $data = JenisPembayaran::create($validated);
 
-            if ($request->target_type === 'specific_students' && $request->has('siswa_ids')) {
-                $data->siswa()->attach($request->siswa_ids);
-            }
+                if ($request->target_type === 'specific_students' && $request->has('siswa_ids')) {
+                    $data->siswa()->attach($request->siswa_ids);
+                }
 
-            if ($request->target_type === 'specific_classes' && $request->has('kelas_ids')) {
-                $data->kelas()->attach($request->kelas_ids);
-            }
+                if ($request->target_type === 'specific_classes' && $request->has('kelas_ids')) {
+                    $data->kelas()->attach($request->kelas_ids);
+                }
 
-            LogAktivitas::create([
-                'aktor_type' => 'admin',
-                'aktor_id'   => Auth::guard('web')->id(),
-                'aktivitas'  => 'Menambahkan jenis pembayaran: ' . $data->nama_pembayaran,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
+                // Jenis pembayaran dan seluruh tagihannya harus berhasil atau gagal bersama-sama.
+                $this->_generateBillsFor($data);
 
-            DB::commit();
-
-            // Generate bills automatically
-            $this->_generateBillsFor($data);
+                LogAktivitas::create([
+                    'aktor_type' => 'admin',
+                    'aktor_id'   => Auth::guard('web')->id(),
+                    'aktivitas'  => 'Menambahkan jenis pembayaran: ' . $data->nama_pembayaran,
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]);
+            });
 
             return redirect()->route('jenis_pembayaran.index')->with('success', 'Jenis pembayaran berhasil ditambahkan dan tagihan sedang dibuat.');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage()])->withInput();
+        } catch (QueryException $e) {
+            // Dua request yang benar-benar bersamaan dapat sama-sama lolos pengecekan awal.
+            // Indeks unik token menjadi pengaman terakhir; request kedua dianggap sukses.
+            if ($this->isDuplicateKeyException($e)
+                && JenisPembayaran::where('submission_token', $submissionToken)->exists()) {
+                return redirect()->route('jenis_pembayaran.index')->with(
+                    'success',
+                    'Jenis pembayaran sudah tersimpan. Permintaan ganda tidak diproses kembali.'
+                );
+            }
+
+            report($e);
+
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan jenis pembayaran. Silakan coba kembali.'])->withInput();
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan jenis pembayaran. Silakan coba kembali.'])->withInput();
         }
     }
 
@@ -151,6 +195,7 @@ class JenisPembayaranController extends Controller
     
     public function update(Request $request, $id)
     {
+        $this->normalizePaymentName($request);
         $this->normalizeCurrencyFields($request, ['nominal']);
         $this->normalizeDueDateForAcademicYear($request);
 
@@ -165,7 +210,18 @@ class JenisPembayaranController extends Controller
                     }
                 },
             ],
-            'nama_pembayaran' => 'required|string|max:255',
+            'nama_pembayaran' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('jenis_pembayaran', 'nama_pembayaran')
+                    ->ignore($id)
+                    ->where(
+                        fn ($query) => $query
+                            ->where('sekolah_id', $request->input('sekolah_id'))
+                            ->where('tahun_ajaran_id', $request->input('tahun_ajaran_id'))
+                    ),
+            ],
             'tipe'            => 'required|in:sekali,bulanan,setahun,semester', // ✅ TAMBAH semester
             'nominal'         => 'required|numeric|min:0',
             'jatuh_tempo'     => $this->dueDateRules($request),
@@ -174,6 +230,8 @@ class JenisPembayaranController extends Controller
             'siswa_ids.*'     => 'exists:siswa,id',
             'kelas_ids'       => 'required_if:target_type,specific_classes|array',
             'kelas_ids.*'     => 'exists:kelas,id',
+        ], [
+            'nama_pembayaran.unique' => 'Nama pembayaran tersebut sudah ada untuk sekolah dan tahun ajaran yang dipilih.',
         ]);
 
         DB::beginTransaction();
@@ -266,6 +324,19 @@ class JenisPembayaranController extends Controller
     private function getAcademicYearOptions()
     {
         return TahunAjaran::validPeriods();
+    }
+
+    private function normalizePaymentName(Request $request): void
+    {
+        $request->merge([
+            'nama_pembayaran' => Str::squish((string) $request->input('nama_pembayaran')),
+        ]);
+    }
+
+    private function isDuplicateKeyException(QueryException $exception): bool
+    {
+        return in_array((string) $exception->getCode(), ['23000', '23505'], true)
+            || (int) ($exception->errorInfo[1] ?? 0) === 1062;
     }
 
     private function normalizeDueDateForAcademicYear(Request $request): void

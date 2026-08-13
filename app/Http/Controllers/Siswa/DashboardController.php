@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Tagihan;
 use App\Models\Pembayaran;
+use App\Models\TahunAjaran;
 
 
 class DashboardController extends Controller
@@ -13,16 +14,28 @@ class DashboardController extends Controller
     public function index()
     {
         $siswa = Auth::guard('siswa')->user();
+        $activeAcademicYearId = TahunAjaran::query()->where('aktif', true)->value('id')
+            ?? $siswa->tahun_ajaran_id;
 
-        // Total seluruh tagihan untuk siswa ini
-        $totalTagihan = Tagihan::where('siswa_id', $siswa->id)->sum('nominal');
+        // Ringkasan utama hanya memakai tahun ajaran aktif. Arsip tahun lama
+        // tetap tersedia dari filter pada halaman Tagihan Saya.
+        $activeBills = Tagihan::query()
+            ->where('siswa_id', $siswa->id)
+            ->when($activeAcademicYearId, fn ($query) => $query->where('tahun_ajaran_id', $activeAcademicYearId));
+        $totalTagihan = (clone $activeBills)->sum('nominal');
 
-        // Total seluruh pembayaran yang telah dilakukan siswa
-        $totalPembayaran = Pembayaran::where('siswa_id', $siswa->id)->sum('jumlah_bayar');
+        $totalPembayaran = Pembayaran::where('siswa_id', $siswa->id)
+            ->when(
+                $activeAcademicYearId,
+                fn ($query) => $query->whereHas('tagihan', fn ($tagihanQuery) =>
+                    $tagihanQuery->where('tahun_ajaran_id', $activeAcademicYearId)
+                )
+            )
+            ->sum('jumlah_bayar');
 
         // Tagihan yang statusnya belum lunas
-        $tagihanAktif = Tagihan::where('siswa_id', $siswa->id)
-                            ->where('status', 'belum lunas')
+        $tagihanAktif = (clone $activeBills)
+                            ->where('status', 'belum')
                             ->get();
 
         // Riwayat pembayaran terakhir (5 terbaru)

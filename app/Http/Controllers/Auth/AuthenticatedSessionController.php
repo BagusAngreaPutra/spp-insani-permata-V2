@@ -62,7 +62,7 @@ class AuthenticatedSessionController extends Controller
     public function createSiswa(): View
     {
         Log::info('[Login-Siswa] Menampilkan halaman login siswa');
-        return view('auth.login-siswa'); // view siswa login
+        return view('siswa.auth.login'); // view siswa login
     }
 
     /**

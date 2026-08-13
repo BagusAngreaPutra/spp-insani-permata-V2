@@ -21,15 +21,21 @@ fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Memeriksa pembaruan branch main..."
 
+BEFORE_SHA="$(git -C "${REPOSITORY_ROOT}" rev-parse HEAD)"
+
 "${UAPI}" --output=json VersionControl update \
     repository_root="${REPOSITORY_ROOT}" \
     branch=main
 
-# Pembaruan Git dikerjakan melalui antrean tugas cPanel. Jeda singkat ini
-# memberi waktu agar HEAD terbaru tersedia sebelum deployment dibuat.
-sleep 20
+# Pembaruan Git dikerjakan melalui antrean tugas cPanel. Tunggu hingga HEAD
+# berubah. Jika remote memang belum berubah, deployment akan dilewati oleh
+# marker commit di cpanel-deploy.sh.
+for _attempt in {1..12}; do
+    sleep 5
+    AFTER_SHA="$(git -C "${REPOSITORY_ROOT}" rev-parse HEAD)"
+    [[ "${AFTER_SHA}" != "${BEFORE_SHA}" ]] && break
+done
 
-"${UAPI}" --output=json VersionControlDeployment create \
-    repository_root="${REPOSITORY_ROOT}"
+/bin/bash "${REPOSITORY_ROOT}/scripts/cpanel-deploy.sh"
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Permintaan deployment dikirim."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sinkronisasi selesai."

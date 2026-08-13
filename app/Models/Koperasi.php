@@ -16,9 +16,13 @@ class Koperasi extends Model
         'kode_barang',
         'nama_barang',
         'kategori',
+        'jenis_transaksi',
         'satuan',
         'harga_beli',
         'harga_jual',
+        'harga_sewa_siswa',
+        'harga_sewa_umum',
+        'harga_penggantian',
         'stok',
         'stok_minimum',
         'deskripsi',
@@ -28,6 +32,9 @@ class Koperasi extends Model
     protected $casts = [
         'harga_beli' => 'decimal:2',
         'harga_jual' => 'decimal:2',
+        'harga_sewa_siswa' => 'decimal:2',
+        'harga_sewa_umum' => 'decimal:2',
+        'harga_penggantian' => 'decimal:2',
         'stok' => 'integer',
         'stok_minimum' => 'integer',
     ];

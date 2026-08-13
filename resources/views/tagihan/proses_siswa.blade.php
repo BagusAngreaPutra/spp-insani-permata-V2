@@ -98,6 +98,37 @@
         gap: 8px;
     }
 
+    .payment-year-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 0 10px;
+        background: #fff;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+    }
+
+    .payment-year-switch label {
+        margin: 0;
+        color: #667085;
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .payment-year-switch select {
+        min-width: 118px;
+        padding: 0 24px 0 0;
+        color: #101828;
+        background-color: transparent;
+        border: 0;
+        outline: 0;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
     .payment-button,
     .payment-group-toggle,
     .payment-quick-button {
@@ -1186,6 +1217,15 @@
         font-size: 9.5px !important;
     }
 
+    .payment-field-error {
+        display: block;
+        margin-top: 5px;
+        color: #b42318;
+        font-size: 9px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
     .payment-field input,
     .payment-field select,
     .payment-field textarea {
@@ -1343,6 +1383,11 @@
         .payment-heading-actions {
             display: grid;
             grid-template-columns: 1fr;
+        }
+
+        .payment-year-switch {
+            justify-content: space-between;
+            width: 100%;
         }
 
         .payment-button {
@@ -1623,7 +1668,19 @@
                 </div>
 
                 <div class="payment-heading-actions">
-                    <a class="payment-button" href="{{ route('tagihan.index.grouped', ['sekolah' => $siswa->id_sekolah, 'kelas' => $siswa->kelas_id]) }}">
+                    @if($academicYearData->isNotEmpty())
+                        <form class="payment-year-switch" method="GET" action="{{ route('tagihan.proses.siswa', $siswa->id) }}">
+                            <label for="paymentAcademicYear">Tahun ajaran</label>
+                            <select id="paymentAcademicYear" name="tahun_ajaran" onchange="this.form.submit()">
+                                @foreach($academicYearData as $tahun)
+                                    <option value="{{ $tahun->id }}" {{ $selectedTahunAjaran?->id === $tahun->id ? 'selected' : '' }}>
+                                        {{ $tahun->label }}{{ $tahun->aktif ? ' · Aktif' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
+                    <a class="payment-button" href="{{ route('tagihan.index.grouped', ['sekolah' => $siswa->id_sekolah, 'kelas' => $siswa->kelas_id, 'tahun_ajaran' => $selectedTahunAjaran?->id]) }}">
                         <i class="fas fa-arrow-left"></i>
                         <span>Kembali ke tagihan</span>
                     </a>
@@ -1652,6 +1709,10 @@
                     <div class="payment-student-detail">
                         <span><i class="fas fa-school" aria-hidden="true"></i>Sekolah</span>
                         <strong>{{ $siswa->sekolah?->nama_sekolah ?? '-' }}</strong>
+                    </div>
+                    <div class="payment-student-detail">
+                        <span><i class="fas fa-calendar-days" aria-hidden="true"></i>Tahun ajaran</span>
+                        <strong>{{ $selectedTahunAjaran?->label ?? '-' }}</strong>
                     </div>
                 </div>
             </section>
@@ -1986,7 +2047,17 @@
                             <div class="payment-details-grid">
                                 <div class="payment-field">
                                     <label for="paymentDate">Tanggal bayar</label>
-                                    <input id="paymentDate" type="date" name="tanggal_bayar" value="{{ date('Y-m-d') }}" required>
+                                    <input id="paymentDate" type="date" name="tanggal_bayar" value="{{ old('tanggal_bayar', date('Y-m-d')) }}" required>
+                                    @error('tanggal_bayar')
+                                        <small class="payment-field-error">{{ $message }}</small>
+                                    @enderror
+                                </div>
+                                <div class="payment-field">
+                                    <label for="receiptDate">Tanggal kuitansi</label>
+                                    <input id="receiptDate" type="date" name="tanggal_kwitansi" value="{{ old('tanggal_kwitansi', date('Y-m-d')) }}" required>
+                                    @error('tanggal_kwitansi')
+                                        <small class="payment-field-error">{{ $message }}</small>
+                                    @enderror
                                 </div>
                                 <div class="payment-field">
                                     <label for="paymentMethod">Metode pembayaran</label>
@@ -2053,6 +2124,7 @@
                     <button class="payment-button" type="button" data-bs-dismiss="modal">Batal</button>
                     <form id="generateStudentForm" action="{{ route('tagihan.generate.manual.siswa', $siswa->id) }}" method="POST">
                         @csrf
+                        <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTahunAjaran?->id }}">
                         <button class="payment-button is-primary" id="generateStudentButton" type="submit">
                             <i class="fas fa-file-circle-plus"></i>
                             <span>Buat tagihan sekarang</span>

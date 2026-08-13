@@ -19,6 +19,7 @@ class JenisPembayaran extends Model
         'nominal',
         'jatuh_tempo',
         'target_type',
+        'submission_token',
     ];
 
     public function sekolah()

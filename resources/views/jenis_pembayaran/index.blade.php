@@ -344,7 +344,7 @@
                         <th>Jatuh Tempo</th>
                         <th>Target</th> {{-- ✅ Kolom baru --}}
                         <th>Sekolah</th>
-                        <th>Aksi</th>
+                        <th class="pi-action-column pi-actions-2">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -376,13 +376,21 @@
                                 @endif
                             </td>
                             <td>{{ $item->sekolah->nama_sekolah ?? '-' }}</td>
-                            <td class="flex gap-2">
-                                <a href="{{ route('jenis_pembayaran.edit', $item->id) }}" class="btn-edit"><i class="fas fa-pen"></i> Edit</a>
-                                <form action="{{ route('jenis_pembayaran.destroy', $item->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Hapus data ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn-delete"><i class="fas fa-trash"></i> Hapus</button>
-                                </form>
+                            <td class="pi-action-column pi-actions-2">
+                                <div class="action-buttons">
+                                    <a href="{{ route('jenis_pembayaran.edit', $item->id) }}" class="btn-edit" title="Edit jenis pembayaran">
+                                        <i class="fas fa-pen" aria-hidden="true"></i>
+                                        <span>Edit</span>
+                                    </a>
+                                    <form action="{{ route('jenis_pembayaran.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-delete" title="Hapus jenis pembayaran">
+                                            <i class="fas fa-trash" aria-hidden="true"></i>
+                                            <span>Hapus</span>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
