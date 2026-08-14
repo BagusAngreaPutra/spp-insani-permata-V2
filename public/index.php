@@ -5,6 +5,8 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+require_once __DIR__.'/../bootstrap/mbstring_fallback.php';
+
 /*
 |--------------------------------------------------------------------------
 | Check If The Application Is Under Maintenance
