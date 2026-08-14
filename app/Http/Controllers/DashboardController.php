@@ -2,45 +2,49 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sekolah;
-use App\Models\Siswa;
-use App\Models\Kelas;
 use App\Models\JenisPembayaran;
-use App\Models\Tagihan;
-use App\Models\Pembayaran;
+use App\Models\Kelas;
+use App\Models\KoperasiPenjualan;
 use App\Models\LogAktivitas;
+use App\Models\Pembayaran;
 use App\Models\Pemasukan;
 use App\Models\Pengeluaran;
+use App\Models\Sekolah;
+use App\Models\Siswa;
+use App\Models\Tagihan;
 use App\Models\TahunAjaran;
-use App\Models\KoperasiPenjualan;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // ✅ Catat log aktivitas membuka dashboard
         LogAktivitas::create([
             'aktor_type' => 'admin',
-            'aktor_id'   => Auth::id(),
-            'aktivitas'  => 'Mengakses halaman dashboard',
+            'aktor_id' => Auth::id(),
+            'aktivitas' => 'Mengakses halaman dashboard',
             'ip_address' => $request->ip(),
             'user_agent' => $request->header('User-Agent'),
         ]);
 
-        // Ambil parameter filter dari request
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $tahun = $request->input('tahun');
+        [$rangeStart, $rangeEnd] = $this->resolveDateRange($tahun, $startDate, $endDate);
 
-        $sekolahList = Sekolah::all();
-        $hasKoperasiSales = Schema::hasTable('koperasi_penjualan');
-        $data = [];
+        // Count siswa dan kelas dijalankan sebagai subquery tunggal, bukan dua
+        // query tambahan untuk setiap sekolah.
+        $sekolahList = Sekolah::query()
+            ->withCount(['siswa', 'kelas'])
+            ->orderBy('nama_sekolah')
+            ->get();
+
         $setupStats = [
-            'sekolah' => Sekolah::count(),
+            'sekolah' => $sekolahList->count(),
             'tahun_ajaran' => TahunAjaran::count(),
             'kelas' => Kelas::count(),
             'siswa' => Siswa::count(),
@@ -49,65 +53,99 @@ class DashboardController extends Controller
             'pembayaran' => Pembayaran::count(),
         ];
 
-        foreach ($sekolahList as $sekolah) {
-            $jumlahSiswa = Siswa::where('id_sekolah', $sekolah->id)->count();
-            $jumlahKelas = Kelas::where('sekolah_id', $sekolah->id)->count();
+        // Setiap sumber keuangan diringkas satu kali untuk semua sekolah. Ini
+        // menjaga jumlah query tetap konstan ketika jumlah sekolah bertambah.
+        $pembayaranPerSekolah = Pembayaran::query()
+            ->join('siswa', 'siswa.id', '=', 'pembayaran.siswa_id')
+            ->when($rangeStart && $rangeEnd, function ($query) use ($rangeStart, $rangeEnd): void {
+                $query->whereBetween('pembayaran.tanggal_bayar', [$rangeStart, $rangeEnd]);
+            })
+            ->selectRaw('siswa.id_sekolah AS sekolah_id, COALESCE(SUM(pembayaran.jumlah_bayar), 0) AS total')
+            ->groupBy('siswa.id_sekolah')
+            ->pluck('total', 'sekolah_id');
 
-            // ✅ Total dari pembayaran siswa
-            $pembayaranQuery = Pembayaran::whereHas('siswa', function ($query) use ($sekolah) {
-                $query->where('id_sekolah', $sekolah->id);
-            });
+        $pemasukanPerSekolah = Pemasukan::query()
+            ->when($rangeStart && $rangeEnd, function (Builder $query) use ($rangeStart, $rangeEnd): void {
+                $query->whereBetween('tanggal', [$rangeStart, $rangeEnd]);
+            })
+            ->selectRaw('sekolah_id, COALESCE(SUM(jumlah), 0) AS total')
+            ->groupBy('sekolah_id')
+            ->pluck('total', 'sekolah_id');
 
-            // ✅ Total dari tabel pemasukan (manual)
-            $pemasukanQuery = Pemasukan::where('sekolah_id', $sekolah->id);
-            $koperasiQuery = $hasKoperasiSales
-                ? KoperasiPenjualan::where('sekolah_id', $sekolah->id)
-                : null;
+        $pengeluaranPerSekolah = Pengeluaran::query()
+            ->when($rangeStart && $rangeEnd, function (Builder $query) use ($rangeStart, $rangeEnd): void {
+                $query->whereBetween('tanggal', [$rangeStart, $rangeEnd]);
+            })
+            ->selectRaw('sekolah_id, COALESCE(SUM(jumlah), 0) AS total')
+            ->groupBy('sekolah_id')
+            ->pluck('total', 'sekolah_id');
 
-            // ✅ Total pengeluaran dari tabel pengeluaran
-            $pengeluaranQuery = Pengeluaran::where('sekolah_id', $sekolah->id);
+        $koperasiPerSekolah = collect();
+        if (Schema::hasTable('koperasi_penjualan')) {
+            $koperasiPerSekolah = KoperasiPenjualan::query()
+                ->when($rangeStart && $rangeEnd, function (Builder $query) use ($rangeStart, $rangeEnd): void {
+                    $query->whereBetween('tanggal', [$rangeStart->toDateString(), $rangeEnd->toDateString()]);
+                })
+                ->selectRaw('sekolah_id, COALESCE(SUM(total), 0) AS total')
+                ->groupBy('sekolah_id')
+                ->pluck('total', 'sekolah_id');
+        }
 
-            // Terapkan filter berdasarkan parameter yang diberikan
-            if ($tahun) {
-                $pembayaranQuery->whereYear('tanggal_bayar', $tahun);
-                $pemasukanQuery->whereYear('tanggal', $tahun);
-                $koperasiQuery?->whereYear('tanggal', $tahun);
-                $pengeluaranQuery->whereYear('tanggal', $tahun);
-            } elseif ($startDate && $endDate) {
-                // Filter berdasarkan rentang tanggal
-                $start = Carbon::createFromFormat('Y-m-d', $startDate)->startOfDay();
-                $end = Carbon::createFromFormat('Y-m-d', $endDate)->endOfDay();
-                
-                $pembayaranQuery->whereBetween('tanggal_bayar', [$start, $end]);
-                $pemasukanQuery->whereBetween('tanggal', [$start, $end]);
-                $koperasiQuery?->whereBetween('tanggal', [$start->toDateString(), $end->toDateString()]);
-                $pengeluaranQuery->whereBetween('tanggal', [$start, $end]);
-            }
+        $data = $sekolahList->map(function (Sekolah $sekolah) use (
+            $pembayaranPerSekolah,
+            $pemasukanPerSekolah,
+            $pengeluaranPerSekolah,
+            $koperasiPerSekolah
+        ): array {
+            $totalPembayaran = (float) ($pembayaranPerSekolah[$sekolah->id] ?? 0);
+            $totalPemasukanManual = (float) ($pemasukanPerSekolah[$sekolah->id] ?? 0);
+            $totalKoperasi = (float) ($koperasiPerSekolah[$sekolah->id] ?? 0);
+            $totalPengeluaran = (float) ($pengeluaranPerSekolah[$sekolah->id] ?? 0);
+            $totalPemasukan = $totalPembayaran + $totalPemasukanManual + $totalKoperasi;
 
-            $totalPembayaranSiswa = $pembayaranQuery->sum('jumlah_bayar');
-            $totalPemasukanManual = $pemasukanQuery->sum('jumlah');
-            $totalPenjualanKoperasi = $koperasiQuery?->sum('total') ?? 0;
-            $totalPengeluaran = $pengeluaranQuery->sum('jumlah');
+            return [
+                'id' => $sekolah->id,
+                'nama' => $sekolah->nama_sekolah,
+                'jenjang' => strtoupper((string) ($sekolah->jenjang ?? '')),
+                'jumlah_siswa' => $sekolah->siswa_count,
+                'jumlah_kelas' => $sekolah->kelas_count,
+                'pemasukan' => $totalPemasukan,
+                'pemasukan_koperasi' => $totalKoperasi,
+                'pengeluaran' => $totalPengeluaran,
+                'saldo_kas' => $totalPemasukan - $totalPengeluaran,
+            ];
+        })->all();
 
-            // ✅ Total pemasukan = dari pembayaran siswa + dari tabel pemasukan
-            $totalPemasukan = $totalPembayaranSiswa + $totalPemasukanManual + $totalPenjualanKoperasi;
+        return view('dashboard', compact('data', 'setupStats', 'startDate', 'endDate', 'tahun'));
+    }
 
-            // ✅ Saldo kas = pemasukan - pengeluaran
-            $saldoKas = $totalPemasukan - $totalPengeluaran;
-
-            $data[] = [
-                'id'           => $sekolah->id,
-                'nama'         => $sekolah->nama_sekolah,
-                'jenjang'      => strtoupper($sekolah->jenjang),
-                'jumlah_siswa' => $jumlahSiswa,
-                'jumlah_kelas' => $jumlahKelas,
-                'pemasukan'    => $totalPemasukan,
-                'pemasukan_koperasi' => $totalPenjualanKoperasi,
-                'pengeluaran'  => $totalPengeluaran,
-                'saldo_kas'    => $saldoKas,
+    /**
+     * Mengubah filter tahun/rentang tanggal menjadi batas waktu yang dapat
+     * memakai index database. whereYear() sengaja dihindari karena membungkus
+     * kolom dengan fungsi SQL dan membuat index tanggal tidak efektif.
+     *
+     * @return array{0: Carbon|null, 1: Carbon|null}
+     */
+    private function resolveDateRange($tahun, $startDate, $endDate): array
+    {
+        if ($tahun && preg_match('/^(20\d{2}|2100)$/', (string) $tahun)) {
+            return [
+                Carbon::create((int) $tahun, 1, 1)->startOfDay(),
+                Carbon::create((int) $tahun, 12, 31)->endOfDay(),
             ];
         }
 
-        return view('dashboard', compact('data', 'setupStats', 'startDate', 'endDate', 'tahun'));
+        if ($startDate && $endDate) {
+            try {
+                return [
+                    Carbon::createFromFormat('Y-m-d', (string) $startDate)->startOfDay(),
+                    Carbon::createFromFormat('Y-m-d', (string) $endDate)->endOfDay(),
+                ];
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        return [null, null];
     }
 }
