@@ -199,6 +199,7 @@
             @csrf
             <button class="app-sidebar-logout" type="submit" title="Keluar" aria-label="Keluar">
                 <i class="fas fa-arrow-right-from-bracket"></i>
+                <span>Keluar</span>
             </button>
         </form>
     </div>

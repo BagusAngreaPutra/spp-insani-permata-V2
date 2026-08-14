@@ -16,8 +16,9 @@
         </span>
         <form method="POST" action="{{ route('siswa.logout') }}">
             @csrf
-            <button class="app-icon-button" type="submit" title="Keluar" aria-label="Keluar">
+            <button class="app-icon-button app-logout-button" type="submit" title="Keluar" aria-label="Keluar">
                 <i class="fas fa-arrow-right-from-bracket"></i>
+                <span>Keluar</span>
             </button>
         </form>
     </div>

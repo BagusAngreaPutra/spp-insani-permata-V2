@@ -414,21 +414,42 @@
     }
 
     .overview-row-action {
-        display: grid;
-        place-items: center;
-        width: 30px;
-        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-width: 112px;
+        height: 36px;
         margin-left: auto;
-        color: #667085;
-        background: #fff;
-        border: 1px solid #d0d5dd;
-        border-radius: 7px;
+        padding: 0 12px;
+        color: #255ec7;
+        background: #eef5ff;
+        border: 1px solid #cbdcff;
+        border-radius: 8px;
+        box-shadow: 0 3px 8px rgba(37, 94, 199, .08);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
         text-decoration: none;
+        white-space: nowrap;
     }
 
     .overview-row-action:hover {
-        color: #1d6b4c;
-        border-color: #a7d8bd;
+        color: #fff;
+        background: #3478ed;
+        border-color: #2867d3;
+        box-shadow: 0 5px 12px rgba(40, 103, 211, .18);
+        transform: translateY(-1px);
+    }
+
+    .overview-row-action i {
+        font-size: 11px;
+    }
+
+    .overview-action-column,
+    .overview-action-cell {
+        width: 136px;
+        text-align: right;
     }
 
     .overview-table-footer {
@@ -703,7 +724,7 @@
                                     <th class="overview-money"><i class="fas fa-arrow-trend-up" aria-hidden="true"></i>Pemasukan</th>
                                     <th class="overview-money"><i class="fas fa-arrow-trend-down" aria-hidden="true"></i>Pengeluaran</th>
                                     <th class="overview-money"><i class="fas fa-wallet" aria-hidden="true"></i>Saldo</th>
-                                    <th aria-label="Aksi"></th>
+                                    <th class="overview-action-column"><i class="fas fa-chart-pie" aria-hidden="true"></i>Ringkasan</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -723,9 +744,10 @@
                                         <td class="overview-money">Rp{{ number_format($item['pemasukan'], 0, ',', '.') }}</td>
                                         <td class="overview-money">Rp{{ number_format($item['pengeluaran'], 0, ',', '.') }}</td>
                                         <td class="overview-money is-balance">Rp{{ number_format($item['saldo_kas'], 0, ',', '.') }}</td>
-                                        <td>
+                                        <td class="overview-action-cell">
                                             <a class="overview-row-action" href="{{ route('sekolah.show', $item['id']) }}" title="Lihat {{ $item['nama'] }}" aria-label="Lihat {{ $item['nama'] }}">
-                                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i>
+                                                <span>Ringkasan</span>
                                             </a>
                                         </td>
                                     </tr>

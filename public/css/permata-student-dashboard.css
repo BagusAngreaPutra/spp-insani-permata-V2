@@ -581,6 +581,57 @@
         box-shadow: none !important;
     }
 
+    body:has(.app-sidebar) .main-content .app-user form {
+        margin: 0 !important;
+    }
+
+    body:has(.app-sidebar) .main-content .app-user .app-logout-button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 7px !important;
+        width: auto !important;
+        min-width: 86px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0 12px !important;
+        color: #c62f46 !important;
+        background: #fff1f3 !important;
+        border: 1px solid #fecdd5 !important;
+        border-radius: 9px !important;
+        box-shadow: 0 2px 6px rgba(198, 47, 70, .06) !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+        cursor: pointer !important;
+    }
+
+    body:has(.app-sidebar) .main-content .app-user .app-logout-button:hover {
+        color: #fff !important;
+        background: #e23d58 !important;
+        border-color: #d92d4b !important;
+        box-shadow: 0 5px 12px rgba(217, 45, 75, .18) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    body:has(.app-sidebar) .main-content .app-user .app-logout-button:focus-visible {
+        outline: 3px solid rgba(226, 61, 88, .18) !important;
+        outline-offset: 2px !important;
+    }
+
+    @media (max-width: 560px) {
+        body:has(.app-sidebar) .main-content .app-user .app-logout-button {
+            width: 38px !important;
+            min-width: 38px !important;
+            padding: 0 !important;
+        }
+
+        body:has(.app-sidebar) .main-content .app-user .app-logout-button span {
+            display: none !important;
+        }
+    }
+
     .app-mobile-trigger {
         display: none !important;
     }
@@ -3296,15 +3347,36 @@
     }
 
     body:has(.app-sidebar) .app-sidebar-logout {
-        color: #68776f !important;
-        background: #f5f8f6 !important;
-        border: 1px solid #e4eae7 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        width: auto !important;
+        min-width: 76px !important;
+        height: 38px !important;
+        padding: 0 10px !important;
+        color: #c62f46 !important;
+        background: #fff1f3 !important;
+        border: 1px solid #fecdd5 !important;
+        border-radius: 9px !important;
+        box-shadow: 0 2px 6px rgba(198, 47, 70, .06) !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
     }
 
     body:has(.app-sidebar) .app-sidebar-logout:hover {
-        color: #d23d45 !important;
-        background: #fff1f2 !important;
-        border-color: #ffd5d8 !important;
+        color: #fff !important;
+        background: #e23d58 !important;
+        border-color: #d92d4b !important;
+        box-shadow: 0 5px 12px rgba(217, 45, 75, .18) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    body:has(.app-sidebar) .app-sidebar-logout:focus-visible {
+        outline: 3px solid rgba(226, 61, 88, .18) !important;
+        outline-offset: 2px !important;
     }
 
     body:has(.app-sidebar) .app-topbar {

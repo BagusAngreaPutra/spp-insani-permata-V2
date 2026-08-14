@@ -14,7 +14,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ asset('css/table-sort.css') }}?v=20260804-5" rel="stylesheet">
     @stack('page-styles')
-    <link href="{{ asset('css/permata-system.css') }}?v=20260813-3" rel="stylesheet">
+    <link href="{{ asset('css/permata-system.css') }}?v=20260813-4" rel="stylesheet">
     <link href="{{ asset('css/filter-groups.css') }}?v=20260813-2" rel="stylesheet">
     <script src="{{ asset('js/table-sort.js') }}?v=20260804-5" defer></script>
 </head>
