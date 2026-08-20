@@ -341,8 +341,8 @@
                 <img src="{{ asset('images/logo.jpg') }}" onerror="this.style.display='none'" alt="Logo" style="width: 90px; height: 90px; margin-right: 20px; border-radius: 50%;">
                 <div style="font-weight: bold; font-size: 16px; line-height: 1.3;">
                     YAYASAN KEMILAU PERMATA INSANI<br>
-                    PAUD (KB/TK) - Permata Insani Islamic School<br>
-                    <span style="font-weight: normal; font-size: 14px;">Jl. Abdul Muis Rt. 09, Kel. Lingkar Selatan, Kec. Paal Merah Jambi 36139</span>
+                    SD IT Permata Insani Islamic School<br>
+                    <span style="font-weight: normal; font-size: 14px;">Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi</span>
                 </div>
             </div>
         </div>
@@ -485,7 +485,7 @@
                     <p class="signature-title">NIP. ________________________</p>
                 </div>
                 <div class="signature-box">
-                    <p>Depok, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}</p>
+                    <p>Jambi, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}</p>
                     <p>Bendahara</p>
                     <div class="signature-line"></div>
                     <p class="signature-name">________________________</p>

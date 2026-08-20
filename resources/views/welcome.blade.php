@@ -459,7 +459,7 @@
 
         <section class="source">
             <div class="container source-inner">
-                <span>Jl. Abdul Muis No. 27, Lingkar Selatan, Kec. Paal Merah, Kota Jambi</span>
+                <span>Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi</span>
                 <span>Profil sekolah merujuk pada <a href="https://referensi.data.kemendikdasmen.go.id/residu/satuanpendidikan/detail/70029968" target="_blank" rel="noopener noreferrer">Referensi Data Kemendikdasmen</a>.</span>
             </div>
         </section>

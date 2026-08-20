@@ -76,10 +76,10 @@ class LaporanPembayaranController extends Controller
         });
 
         $sekolah = [
-            'nama'   => 'SD IT Permata Insani',
-            'alamat' => 'Jl. Kenanga No. 123, Kota Depok, Jawa Barat',
-            'telepon'=> '(021) 1234567',
-            'email'  => 'info@permatainsani.sch.id'
+            'nama'   => 'SD IT Permata Insani Islamic School',
+            'alamat' => 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi',
+            'telepon'=> '0811742088',
+            'email'  => 'permatainsani.sch@gmail.com'
         ];
 
         return view('laporan.pembayaran', compact('pembayarans', 'subtotal', 'tanggalLaporan', 'sekolah', 'daftarSekolah', 'daftarKelas'));
@@ -145,7 +145,7 @@ class LaporanPembayaranController extends Controller
         $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal('center');
 
-        $sheet->setCellValue('A3', 'Jl. Kenanga No. 123, Kota Depok, Jawa Barat');
+        $sheet->setCellValue('A3', 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi');
         $sheet->mergeCells('A3:J3');
         $sheet->getStyle('A3')->getAlignment()->setHorizontal('center');
 

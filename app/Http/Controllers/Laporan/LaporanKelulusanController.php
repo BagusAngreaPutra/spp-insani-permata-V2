@@ -77,10 +77,10 @@ class LaporanKelulusanController extends Controller
             // Jika tidak ada sekolah yang cocok, buat objek dummy dengan data default
             if (!($sekolah->exists ?? false)) {
                 $sekolah = new \stdClass();
-                $sekolah->nama_sekolah = 'SD IT Permata Insani';
-                $sekolah->alamat = 'Jl. Kenanga No. 123, Kota Depok, Jawa Barat';
-                $sekolah->telepon = '(021) 1234567';
-                $sekolah->email = 'info@permatainsani.sch.id';
+                $sekolah->nama_sekolah = 'SD IT Permata Insani Islamic School';
+                $sekolah->alamat = 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi';
+                $sekolah->telepon = '0811742088';
+                $sekolah->email = 'permatainsani.sch@gmail.com';
             }
         }
 

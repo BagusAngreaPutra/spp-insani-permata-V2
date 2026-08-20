@@ -169,7 +169,7 @@
                                     <div style="font-weight: bold; font-size: 16px; line-height: 1.3;">
                                         YAYASAN KEMILAU PERMATA INSANI<br>
                                         PAUD (KB/TK) - Permata Insani Islamic School<br>
-                                        <span style="font-weight: normal; font-size: 14px;">Jl. Abdul Muis Rt. 09, Kel. Lingkar Selatan, Kec. Paal Merah Jambi 36139</span>
+                                        <span style="font-weight: normal; font-size: 14px;">Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi</span>
                                     </div>
                                 </div>
                                 <div style="text-align: center; min-width: 140px;">

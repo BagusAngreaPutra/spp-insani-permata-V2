@@ -167,8 +167,8 @@
                 <img src="{{ asset('images/logo.jpg') }}" onerror="this.style.display='none'" alt="Logo sekolah">
                 <div>
                     YAYASAN KEMILAU PERMATA INSANI<br>
-                    PAUD (KB/TK) - Permata Insani Islamic School<br>
-                    <span>Jl. Abdul Muis Rt. 09, Kel. Lingkar Selatan, Kec. Paal Merah Jambi 36139</span>
+                    SD IT Permata Insani Islamic School<br>
+                    <span>Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi</span>
                 </div>
             </div>
         </div>

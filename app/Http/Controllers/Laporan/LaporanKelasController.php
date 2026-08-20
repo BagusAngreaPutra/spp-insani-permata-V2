@@ -17,10 +17,10 @@ class LaporanKelasController extends Controller
     {
         // Kop sekolah di header laporan
         $sekolah = [
-            'nama'   => 'SD IT Permata Insani',
-            'alamat' => 'Jl. Kenanga No. 123, Kota Depok, Jawa Barat',
-            'telepon'=> '(021) 1234567',
-            'email'  => 'info@permatainsani.sch.id'
+            'nama'   => 'SD IT Permata Insani Islamic School',
+            'alamat' => 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi',
+            'telepon'=> '0811742088',
+            'email'  => 'permatainsani.sch@gmail.com'
         ];
 
         // 🔹 Ambil daftar sekolah dan tahun ajaran untuk dropdown filter

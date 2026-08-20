@@ -901,7 +901,9 @@ class TagihanController extends Controller
                 // Untuk tagihan non-bulanan
                 $tagihanList[] = [
                     'id' => $tagihan->id,
-                    'nama_tagihan' => $tagihan->nama_tagihan,
+                    'nama_tagihan' => $tagihan->tipe === 'sekali'
+                        ? $tagihan->nama_tagihan_dinamis
+                        : $tagihan->nama_tagihan,
                     'tipe' => $tagihan->tipe,
                     'is_grouped' => false,
                     'periode' => $periodeDisplay,

@@ -142,6 +142,25 @@ class TagihanPeriodReconciler
 
         $expectedPeriods = $this->expectedPeriods($tagihan->jenisPembayaran);
 
+        // Tagihan sekali bayar versi lama menyimpan periode sebagai YYYY-MM,
+        // sedangkan format saat ini hanya YYYY. Tahun ajaran adalah acuan yang
+        // lebih aman karena tagihan yang sudah dibayar tidak boleh menghilang
+        // hanya akibat perbedaan format periode.
+        if ($tagihan->jenisPembayaran->tipe === 'sekali') {
+            if ($tagihan->tahun_ajaran_id !== null
+                && $tagihan->jenisPembayaran->tahun_ajaran_id !== null) {
+                return (int) $tagihan->tahun_ajaran_id
+                    === (int) $tagihan->jenisPembayaran->tahun_ajaran_id;
+            }
+
+            $configuredYear = $expectedPeriods[0] ?? null;
+            $period = (string) $tagihan->periode;
+
+            return $configuredYear === null
+                || $period === $configuredYear
+                || str_starts_with($period, $configuredYear . '-');
+        }
+
         return !$expectedPeriods
             || in_array((string) $tagihan->periode, $expectedPeriods, true);
     }

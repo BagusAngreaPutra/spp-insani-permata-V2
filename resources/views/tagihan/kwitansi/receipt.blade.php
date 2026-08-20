@@ -1093,7 +1093,7 @@
                         <div class="receipt-brand-copy">
                             <strong>Yayasan Kemilau Permata Insani</strong>
                             <span>{{ $school?->nama_sekolah ?? 'Permata Insani Islamic School' }}</span>
-                            <span>{{ $school?->alamat ?? 'Jl. Abdul Muis RT 09, Lingkar Selatan, Paal Merah, Jambi' }}</span>
+                            <span>{{ $school?->alamat ?? 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi' }}</span>
                         </div>
                     </div>
 
