@@ -57,6 +57,62 @@
         font-size: 12px;
     }
 
+    .admin-triangle-alert {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 18px 14px 14px;
+        overflow: hidden;
+        background: linear-gradient(105deg, #fff1f2 0%, #fff 72%);
+        border: 1px solid #fecdd3;
+        border-left: 4px solid #dc2626;
+        border-radius: 12px;
+        box-shadow: 0 7px 18px rgba(220, 38, 38, .08);
+    }
+
+    .admin-triangle-alert__shape {
+        display: grid;
+        flex: 0 0 72px;
+        place-items: center;
+        width: 72px;
+        height: 66px;
+        padding-top: 9px;
+        color: #fff;
+        background: linear-gradient(150deg, #ef4444, #b91c1c);
+        clip-path: polygon(50% 0, 100% 100%, 0 100%);
+        filter: drop-shadow(0 5px 7px rgba(185, 28, 28, .28));
+        font-size: 23px;
+    }
+
+    .admin-triangle-alert__content {
+        min-width: 0;
+    }
+
+    .admin-triangle-alert__eyebrow {
+        display: block;
+        margin-bottom: 3px;
+        color: #b42318;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .admin-triangle-alert__title {
+        margin: 0;
+        color: #7f1d1d;
+        font-size: 15px;
+        font-weight: 750;
+        line-height: 1.3;
+    }
+
+    .admin-triangle-alert__text {
+        margin: 4px 0 0;
+        color: #991b1b;
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
     .overview-heading-tools,
     .overview-actions,
     .overview-update {
@@ -521,6 +577,19 @@
             gap: 14px;
         }
 
+        .admin-triangle-alert {
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+        }
+
+        .admin-triangle-alert__shape {
+            flex-basis: 58px;
+            width: 58px;
+            height: 54px;
+            font-size: 18px;
+        }
+
         .overview-heading-tools,
         .overview-update,
         .overview-actions {
@@ -607,6 +676,17 @@
                     </div>
                 </div>
             </header>
+
+            <section class="admin-triangle-alert" role="status" aria-label="Perhatian dashboard admin">
+                <span class="admin-triangle-alert__shape" aria-hidden="true">
+                    <i class="fas fa-exclamation" aria-hidden="true"></i>
+                </span>
+                <div class="admin-triangle-alert__content">
+                    <span class="admin-triangle-alert__eyebrow">Perhatian admin</span>
+                    <h2 class="admin-triangle-alert__title">Pastikan data dashboard selalu diperiksa</h2>
+                    <p class="admin-triangle-alert__text">Pantau pembayaran, tagihan, dan saldo sekolah dari ringkasan di bawah ini.</p>
+                </div>
+            </section>
 
             <section class="overview-filter-panel {{ $filterAktif ? 'is-open' : '' }}" id="overviewFilterPanel" aria-label="Filter ringkasan">
                 <form class="overview-filter-form" method="GET" action="{{ route('dashboard') }}">
