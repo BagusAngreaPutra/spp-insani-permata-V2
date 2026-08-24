@@ -11,7 +11,6 @@ use App\Models\Tagihan;
 use App\Models\LogAktivitas;
 use App\Models\KoperasiPenjualan;
 use App\Services\SppDiscountCalculator;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
@@ -734,13 +733,34 @@ class PembayaranController extends Controller
             ->value();
 
         $filename = 'kwitansi-' . ($safeNumber ?: 'pembayaran') . '.pdf';
-        $pdf = Pdf::loadView('tagihan.kwitansi.pdf', compact('receipt'))
-            ->setPaper('a4', 'portrait')
-            ->setOption('isRemoteEnabled', false);
+
+        if (! class_exists(\Barryvdh\DomPDF\PDF::class) || ! app()->bound('dompdf.wrapper')) {
+            return $this->clientReceiptPdfFallback($receipt, $preview);
+        }
+
+        try {
+            $pdf = app('dompdf.wrapper')
+                ->loadView('tagihan.kwitansi.pdf', compact('receipt'))
+                ->setPaper('a4', 'portrait')
+                ->setOption('isRemoteEnabled', false);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $this->clientReceiptPdfFallback($receipt, $preview);
+        }
 
         return $preview
             ? $pdf->stream($filename)
             : $pdf->download($filename);
+    }
+
+    private function clientReceiptPdfFallback(array $receipt, bool $preview)
+    {
+        return view('tagihan.kwitansi.receipt', [
+            'receipt' => $receipt,
+            'clientPdfFallback' => ! $preview,
+            'clientPrintFallback' => $preview,
+        ]);
     }
 
     private function paymentMethodLabel(?string $method): string

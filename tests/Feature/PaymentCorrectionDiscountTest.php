@@ -121,6 +121,12 @@ class PaymentCorrectionDiscountTest extends TestCase
         $groupDownload->assertOk();
         $this->assertStringContainsString('attachment', (string) $groupDownload->headers->get('content-disposition'));
 
+        $this->app->offsetUnset('dompdf.wrapper');
+        $fallbackDownload = $this->get(route('pembayaran.kwitansi.pdf', $payment));
+        $fallbackDownload->assertOk()
+            ->assertSee('html2pdf.bundle.min.js')
+            ->assertSee('is-client-pdf-export');
+
         $this->actingAs($admin, 'web')
             ->put(route('pembayaran.koreksi.update', $payment), [
                 'siswa_id' => $student->id,

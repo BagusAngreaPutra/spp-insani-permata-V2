@@ -27,7 +27,10 @@
     $showNote = $rawNote !== ''
         && !preg_match('/^Pembayaran multi-tagihan(?:\s+\(Diskon:.*\))?$/i', $rawNote);
     $spelledAmount = ucfirst(trim(terbilang((int) $paidTotal))) . ' rupiah';
+    $pdfFilename = 'kwitansi-' . trim((string) preg_replace('/[^A-Za-z0-9._-]+/', '-', str_replace(['/', '\\'], '-', (string) $receipt['number'])), '-') . '.pdf';
     $pdfPreviewUrl = $receipt['pdf_url'] . (str_contains($receipt['pdf_url'], '?') ? '&' : '?') . 'preview=1';
+    $clientPdfFallback = (bool) ($clientPdfFallback ?? false);
+    $clientPrintFallback = (bool) ($clientPrintFallback ?? false);
 @endphp
 
 @push('page-styles')
@@ -138,6 +141,28 @@
         border: 1px solid #d7d7d7;
         border-radius: 0;
         box-shadow: none;
+    }
+
+    .receipt-paper.is-client-pdf-export {
+        width: 180mm !important;
+        min-width: 180mm !important;
+        max-width: 180mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .receipt-paper.is-client-pdf-export .receipt-table-wrap {
+        overflow: visible !important;
+    }
+
+    .receipt-paper.is-client-pdf-export .receipt-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
     }
 
     .receipt-document-header {
@@ -1206,5 +1231,63 @@
         </div>
     </div>
 </div>
+
+@if($clientPdfFallback || $clientPrintFallback)
+<script src="{{ asset('js/html2pdf.bundle.min.js') }}?v=0.10.1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const receipt = document.querySelector('[data-receipt-document]');
+        const shouldPrint = @json($clientPrintFallback);
+
+        if (!receipt) return;
+
+        if (shouldPrint) {
+            window.setTimeout(() => window.print(), 150);
+            return;
+        }
+
+        if (typeof window.html2pdf !== 'function') {
+            window.alert('Generator PDF belum tersedia. Silakan gunakan tombol Cetak kuitansi.');
+            return;
+        }
+
+        receipt.classList.add('is-client-pdf-export');
+
+        try {
+            if (document.fonts && document.fonts.ready) {
+                await document.fonts.ready;
+            }
+
+            await window.html2pdf()
+                .set({
+                    margin: [12, 12, 12, 12],
+                    filename: @json($pdfFilename ?: 'kwitansi-pembayaran.pdf'),
+                    image: { type: 'jpeg', quality: 1 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: 1200,
+                    },
+                    jsPDF: {
+                        unit: 'mm',
+                        format: 'a4',
+                        orientation: 'portrait',
+                        compress: true,
+                    },
+                    pagebreak: { mode: ['css', 'legacy'] },
+                })
+                .from(receipt)
+                .save();
+        } finally {
+            receipt.classList.remove('is-client-pdf-export');
+        }
+    });
+</script>
+@endif
 
 @endsection
