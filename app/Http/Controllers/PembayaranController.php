@@ -10,6 +10,7 @@ use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use App\Models\LogAktivitas;
 use App\Models\KoperasiPenjualan;
+use App\Services\SppDiscountCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -20,6 +21,10 @@ use Carbon\Carbon;
 
 class PembayaranController extends Controller
 {
+    public function __construct(private readonly SppDiscountCalculator $sppDiscountCalculator)
+    {
+    }
+
     public function index(Request $request)
     {
         $filterRules = [
@@ -476,8 +481,6 @@ class PembayaranController extends Controller
             $affectedBillIds = $payments->pluck('tagihan_id')->filter()->map(fn ($value) => (int) $value)->all();
 
             if ($isChangingStudent) {
-                $additionalCredits = [];
-
                 foreach ($payments as $payment) {
                     $sourceBill = Tagihan::query()->lockForUpdate()->find($payment->tagihan_id);
 
@@ -506,27 +509,50 @@ class PembayaranController extends Controller
                         ]);
                     }
 
-                    $credit = (float) $payment->jumlah_bayar + (float) $payment->diskon;
-                    $additionalCredits[$targetBill->id] = ($additionalCredits[$targetBill->id] ?? 0) + $credit;
                     $billAssignments[$payment->id] = $targetBill;
                     $affectedBillIds[] = $targetBill->id;
                 }
+            }
 
-                foreach ($additionalCredits as $targetBillId => $additionalCredit) {
-                    $targetBill = collect($billAssignments)
-                        ->first(fn (Tagihan $bill) => (int) $bill->id === (int) $targetBillId)
-                        ?? Tagihan::findOrFail($targetBillId);
-                    $existingCredit = (float) Pembayaran::query()
-                        ->where('tagihan_id', $targetBillId)
+            $paymentIds = $payments->pluck('id')->map(fn ($value) => (int) $value)->all();
+            $coverageByBill = [];
+            $paymentAdjustments = [];
+
+            foreach ($payments as $payment) {
+                $targetBill = $billAssignments[$payment->id] ?? $payment->tagihan;
+
+                if (! $targetBill) {
+                    throw ValidationException::withMessages([
+                        'transaction' => 'Salah satu tagihan transaksi sudah tidak tersedia.',
+                    ]);
+                }
+
+                if (! array_key_exists($targetBill->id, $coverageByBill)) {
+                    $coverageByBill[$targetBill->id] = (float) Pembayaran::query()
+                        ->where('tagihan_id', $targetBill->id)
+                        ->whereNotIn('id', $paymentIds)
                         ->selectRaw('COALESCE(SUM(jumlah_bayar + COALESCE(diskon, 0)), 0) as total')
                         ->value('total');
-
-                    if (($existingCredit + $additionalCredit) > ((float) $targetBill->nominal + 0.01)) {
-                        throw ValidationException::withMessages([
-                            'siswa_id' => 'Pembayaran tidak dapat dipindahkan karena tagihan "' . $this->receiptBillName($targetBill) . '" pada siswa tujuan akan melebihi nominal.',
-                        ]);
-                    }
                 }
+
+                $discount = $this->sppDiscountCalculator->settlementDiscount(
+                    $targetBill,
+                    $validated['tanggal_bayar'],
+                    (float) $payment->jumlah_bayar,
+                    $coverageByBill[$targetBill->id]
+                );
+                $coverageByBill[$targetBill->id] += (float) $payment->jumlah_bayar + $discount;
+
+                if ($coverageByBill[$targetBill->id] > ((float) $targetBill->nominal + 0.01)) {
+                    throw ValidationException::withMessages([
+                        'siswa_id' => 'Pembayaran tidak dapat dikoreksi karena tagihan "' . $this->receiptBillName($targetBill) . '" akan melebihi nominal.',
+                    ]);
+                }
+
+                $paymentAdjustments[$payment->id] = [
+                    'bill' => $targetBill,
+                    'discount' => $discount,
+                ];
             }
 
             $oldDescription = $this->paymentCorrectionDescription($payments);
@@ -537,7 +563,7 @@ class PembayaranController extends Controller
             }
 
             foreach ($payments as $payment) {
-                $targetBill = $billAssignments[$payment->id] ?? $payment->tagihan;
+                $targetBill = $paymentAdjustments[$payment->id]['bill'];
 
                 $payment->forceFill([
                     'siswa_id' => $targetStudent->id,
@@ -546,6 +572,7 @@ class PembayaranController extends Controller
                     'periode' => $targetBill?->periode ?? $payment->periode,
                     'tanggal_bayar' => $validated['tanggal_bayar'],
                     'tanggal_kwitansi' => $validated['tanggal_kwitansi'],
+                    'diskon' => $paymentAdjustments[$payment->id]['discount'],
                     'metode_bayar' => $validated['metode_bayar'],
                     'keterangan' => $validated['keterangan'] ?? null,
                     'nomor_kwitansi' => $newReceiptNumber ?: $payment->nomor_kwitansi,
@@ -596,9 +623,12 @@ class PembayaranController extends Controller
         ]);
     }
 
-    public function unduhKwitansiPdf($id)
+    public function unduhKwitansiPdf(Request $request, $id)
     {
-        return $this->downloadReceiptPdf($this->receiptForPayment((int) $id));
+        return $this->downloadReceiptPdf(
+            $this->receiptForPayment((int) $id),
+            $request->boolean('preview')
+        );
     }
 
     private function receiptForPayment(int $id): array
@@ -656,7 +686,10 @@ class PembayaranController extends Controller
             return back()->with('error', 'Tidak ada data pembayaran yang dipilih.');
         }
 
-        return $this->downloadReceiptPdf($this->receiptForPaymentGroup($ids));
+        return $this->downloadReceiptPdf(
+            $this->receiptForPaymentGroup($ids),
+            $request->boolean('preview')
+        );
     }
 
     private function receiptForPaymentGroup(array $ids): array
@@ -692,7 +725,7 @@ class PembayaranController extends Controller
         return $receipt;
     }
 
-    private function downloadReceiptPdf(array $receipt)
+    private function downloadReceiptPdf(array $receipt, bool $preview = false)
     {
         $safeNumber = Str::of((string) $receipt['number'])
             ->replace(['/', '\\'], '-')
@@ -700,10 +733,14 @@ class PembayaranController extends Controller
             ->trim('-')
             ->value();
 
-        return Pdf::loadView('tagihan.kwitansi.pdf', compact('receipt'))
+        $filename = 'kwitansi-' . ($safeNumber ?: 'pembayaran') . '.pdf';
+        $pdf = Pdf::loadView('tagihan.kwitansi.pdf', compact('receipt'))
             ->setPaper('a4', 'portrait')
-            ->setOption('isRemoteEnabled', false)
-            ->download('kwitansi-' . ($safeNumber ?: 'pembayaran') . '.pdf');
+            ->setOption('isRemoteEnabled', false);
+
+        return $preview
+            ? $pdf->stream($filename)
+            : $pdf->download($filename);
     }
 
     private function paymentMethodLabel(?string $method): string
@@ -750,6 +787,7 @@ class PembayaranController extends Controller
             'metode ' . $this->paymentMethodLabel($first->metode_bayar),
             'tanggal bayar ' . optional($first->tanggal_bayar)->format('d-m-Y'),
             'tanggal kuitansi ' . optional($first->tanggal_kwitansi ?? $first->tanggal_bayar)->format('d-m-Y'),
+            'potongan Rp ' . number_format((float) $payments->sum('diskon'), 0, ',', '.'),
             $payments->count() . ' tagihan',
         ]);
     }

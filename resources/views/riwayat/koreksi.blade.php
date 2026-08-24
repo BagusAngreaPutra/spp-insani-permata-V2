@@ -192,7 +192,7 @@
                 <div class="correction-panel-head">
                     <div>
                         <h2>Data yang benar</h2>
-                        <p>Nilai pembayaran dan potongan tidak diubah dari transaksi asli.</p>
+                        <p>Nilai uang yang diterima tetap. Potongan SPP dihitung ulang dari tanggal pembayaran.</p>
                     </div>
                 </div>
 
@@ -259,7 +259,7 @@
 
                     <div class="correction-warning">
                         <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-                        <span>Koreksi tidak menghapus transaksi. Setelah disimpan, status tagihan asal dan tujuan dihitung ulang dan kuitansi menggunakan data terbaru.</span>
+                        <span>Koreksi tidak menghapus transaksi. Diskon pelunasan SPP maksimal Rp25.000 otomatis diterapkan jika tanggal pembayaran tidak melewati jatuh tempo, lalu status tagihan dan kuitansi dihitung ulang.</span>
                     </div>
 
                     <div class="correction-form-actions">

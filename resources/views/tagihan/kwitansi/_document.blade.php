@@ -29,7 +29,7 @@
     @page { size: A4 portrait; margin: 12mm; }
 
     #receipt-document {
-        width: 186mm;
+        width: 182mm;
         max-width: 100%;
         min-width: 0;
         margin: 0 auto;
@@ -124,13 +124,13 @@
         .receipt-paper {
             margin: 0 !important;
             padding: 0 !important;
-            width: 186mm !important;
+            width: 182mm !important;
         }
 
         #receipt-document {
             margin: 0 !important;
             padding: 0 !important;
-            width: 186mm !important;
+            width: 182mm !important;
         }
     }
 </style>

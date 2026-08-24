@@ -6,7 +6,7 @@
     <style>
         @page { size: A4 portrait; margin: 12mm; }
         html, body { background: #fff; margin: 0; padding: 0; }
-        .pdf-receipt-page { margin: 0 auto; overflow: hidden; width: 186mm; }
+        .pdf-receipt-page { margin: 0 auto; overflow: visible; width: 182mm; }
     </style>
 </head>
 <body>

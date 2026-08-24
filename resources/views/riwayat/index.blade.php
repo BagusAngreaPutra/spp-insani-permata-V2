@@ -967,7 +967,7 @@
                                     ? route('pembayaran.koreksi.edit', $firstItem->id)
                                     : null;
                                 $receiptPdfUrl = !$isCooperative
-                                    ? route('pembayaran.kwitansi.grup', ['ids' => $tx['ids'], 'download' => 1])
+                                    ? route('pembayaran.kwitansi.grup.pdf', ['ids' => $tx['ids']])
                                     : null;
                                 $transactionValue = (float) $tx['total_bayar'] + (float) $tx['total_diskon'];
                             @endphp
