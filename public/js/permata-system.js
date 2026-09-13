@@ -100,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         root.querySelectorAll('a, button').forEach((control) => {
             if (control.matches(
                 '.app-nav-link, .app-icon-button, .payment-group-title, ' +
-                '.billing-search-clear, [class*="search-clear"], [data-bs-toggle="collapse"]'
+                '.billing-search-clear, .transaction-tabs > a, .payment-activation-button, ' +
+                '[class*="search-clear"], [data-bs-toggle="collapse"]'
             )) return;
             const textLabel = (control.textContent || '').replace(/\s+/g, ' ').trim();
             const label = (

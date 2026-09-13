@@ -10,6 +10,7 @@ use App\Models\Pembayaran;
 use App\Models\Tagihan;
 use App\Models\LogAktivitas;
 use App\Models\KoperasiPenjualan;
+use App\Models\Pemasukan;
 use App\Services\SppDiscountCalculator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -29,7 +30,7 @@ class PembayaranController extends Controller
         $filterRules = [
             'sekolah_id' => ['nullable', 'integer', 'exists:sekolah,id'],
             'kelas_id' => ['nullable', 'integer', 'exists:kelas,id'],
-            'jenis_pembayaran' => ['nullable', 'in:sekolah,koperasi'],
+            'jenis_pembayaran' => ['nullable', 'in:sekolah,koperasi,pemasukan'],
             'search' => ['nullable', 'string', 'max:120'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
@@ -97,7 +98,7 @@ class PembayaranController extends Controller
     ) {
         $transaksi = collect();
 
-        if ($selectedJenisPembayaran !== 'koperasi') {
+        if (!$selectedJenisPembayaran || $selectedJenisPembayaran === 'sekolah') {
             $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan'])
                 ->latest('tanggal_bayar')
                 ->latest('id');
@@ -144,11 +145,13 @@ class PembayaranController extends Controller
             })->map(function ($group) {
                 return [
                     'source_type' => 'sekolah',
-                    'source_label' => 'Pembayaran Sekolah',
+                    'source_label' => 'Tagihan Siswa',
                     'items' => $group,
                     'total_bayar' => $group->sum('jumlah_bayar'),
                     'total_diskon' => $group->sum(function ($item) { return $item->diskon ?? 0; }),
                     'siswa' => $group->first()->siswa,
+                    'sekolah' => $group->first()->siswa?->sekolah,
+                    'kelas' => $group->first()->siswa?->kelas,
                     'tanggal_bayar' => $group->first()->tanggal_bayar,
                     'tanggal_kwitansi' => $group->first()->tanggal_kwitansi ?? $group->first()->tanggal_bayar,
                     'metode_bayar' => $group->first()->metode_bayar,
@@ -159,7 +162,7 @@ class PembayaranController extends Controller
             })->values());
         }
 
-        if ($selectedJenisPembayaran !== 'sekolah') {
+        if (!$selectedJenisPembayaran || $selectedJenisPembayaran === 'koperasi') {
             $koperasiQuery = KoperasiPenjualan::with(['siswa.kelas', 'siswa.sekolah', 'details'])
                 ->latest('tanggal')
                 ->latest('id');
@@ -202,11 +205,60 @@ class PembayaranController extends Controller
                     'total_bayar' => $penjualan->total,
                     'total_diskon' => 0,
                     'siswa' => $penjualan->siswa,
+                    'sekolah' => $penjualan->siswa?->sekolah ?? $penjualan->sekolah,
+                    'kelas' => $penjualan->siswa?->kelas,
                     'tanggal_bayar' => $penjualan->tanggal,
                     'metode_bayar' => 'Koperasi',
                     'keterangan' => $penjualan->catatan,
                     'ids' => (string) $penjualan->id,
                     'transaction_id' => $penjualan->kode_transaksi,
+                ];
+            }));
+        }
+
+        if ((!$selectedJenisPembayaran || $selectedJenisPembayaran === 'pemasukan') && !$selectedKelas) {
+            $pemasukanQuery = Pemasukan::with('sekolah')
+                ->latest('tanggal')
+                ->latest('id');
+
+            if ($selectedSekolah) {
+                $pemasukanQuery->where('sekolah_id', $selectedSekolah);
+            }
+
+            if ($search) {
+                $pemasukanQuery->where(function ($query) use ($search) {
+                    $query->where('sumber', 'like', "%{$search}%")
+                        ->orWhere('keterangan', 'like', "%{$search}%")
+                        ->orWhereHas('sekolah', function ($schoolQuery) use ($search) {
+                            $schoolQuery->where('nama_sekolah', 'like', "%{$search}%");
+                    });
+
+                    if (preg_match('/^(?:PM-?)?(\d+)$/i', $search, $matches)) {
+                        $query->orWhere('id', (int) $matches[1]);
+                    }
+                });
+            }
+
+            $pemasukanQuery
+                ->when($startDate, fn ($incomeQuery) => $incomeQuery->whereDate('tanggal', '>=', $startDate))
+                ->when($endDate, fn ($incomeQuery) => $incomeQuery->whereDate('tanggal', '<=', $endDate));
+
+            $transaksi = $transaksi->merge($pemasukanQuery->get()->map(function ($pemasukan) {
+                return [
+                    'source_type' => 'pemasukan',
+                    'source_label' => 'Pemasukan Lainnya',
+                    'items' => collect([$pemasukan]),
+                    'total_bayar' => $pemasukan->jumlah,
+                    'total_diskon' => 0,
+                    'siswa' => null,
+                    'sekolah' => $pemasukan->sekolah,
+                    'kelas' => null,
+                    'tanggal_bayar' => $pemasukan->tanggal,
+                    'tanggal_kwitansi' => $pemasukan->tanggal,
+                    'metode_bayar' => 'Pemasukan langsung',
+                    'keterangan' => $pemasukan->keterangan,
+                    'ids' => (string) $pemasukan->id,
+                    'transaction_id' => 'PM-' . str_pad((string) $pemasukan->id, 6, '0', STR_PAD_LEFT),
                 ];
             }));
         }
@@ -219,6 +271,7 @@ class PembayaranController extends Controller
             'total' => $transaksi->count(),
             'sekolah' => $transaksi->where('source_type', 'sekolah')->count(),
             'koperasi' => $transaksi->where('source_type', 'koperasi')->count(),
+            'pemasukan' => $transaksi->where('source_type', 'pemasukan')->count(),
             'nominal' => (float) $transaksi->sum('total_bayar'),
         ];
 
@@ -348,6 +401,12 @@ class PembayaranController extends Controller
                 ]);
             }
 
+            if (! $tagihan->is_active) {
+                throw ValidationException::withMessages([
+                    'tagihan_id' => 'Tagihan tersebut sedang tidak aktif dan tidak dapat dibayar.',
+                ]);
+            }
+
             $totalCoverage = (float) Pembayaran::query()
                 ->where('tagihan_id', $tagihan->id)
                 ->selectRaw('COALESCE(SUM(jumlah_bayar + COALESCE(diskon, 0)), 0) AS total_coverage')
@@ -430,6 +489,7 @@ class PembayaranController extends Controller
             'students' => $students,
             'currentStudent' => $payments->first()?->siswa,
             'transactionReference' => $anchor->transaction_id ?: ($anchor->nomor_kwitansi ?: '#' . $anchor->id),
+            'sppDiscountConfig' => $this->sppDiscountCalculator->configuration(),
         ]);
     }
 
@@ -491,6 +551,7 @@ class PembayaranController extends Controller
 
                     $targetBillQuery = Tagihan::query()
                         ->where('siswa_id', $targetStudent->id)
+                        ->where('is_active', true)
                         ->where('jenis_pembayaran_id', $sourceBill->jenis_pembayaran_id)
                         ->where('tahun_ajaran_id', $sourceBill->tahun_ajaran_id)
                         ->where('tipe', $sourceBill->tipe)
@@ -646,6 +707,7 @@ class PembayaranController extends Controller
 
         $receipt = [
             'student' => $pembayaran->siswa,
+            'document_label' => 'Kwitansi pembayaran',
             'number' => $pembayaran->nomor_kwitansi ?? str_pad((string) $pembayaran->id, 6, '0', STR_PAD_LEFT),
             'payment_date' => $pembayaran->tanggal_bayar,
             'receipt_date' => $pembayaran->tanggal_kwitansi ?? $pembayaran->tanggal_bayar,
@@ -659,6 +721,7 @@ class PembayaranController extends Controller
             'total_paid' => (float) $pembayaran->jumlah_bayar,
             'total_discount' => (float) $pembayaran->diskon,
             'pdf_url' => route('pembayaran.kwitansi.pdf', ['id' => $pembayaran->id]),
+            'back_url' => route('riwayat.index'),
         ];
 
         return $receipt;
@@ -704,6 +767,7 @@ class PembayaranController extends Controller
         $firstItem = $pembayaranItems->first();
         $receipt = [
             'student' => $firstItem->siswa,
+            'document_label' => $pembayaranItems->count() > 1 ? 'Kwitansi gabungan' : 'Kwitansi pembayaran',
             'number' => $firstItem->nomor_kwitansi ?? str_pad((string) $firstItem->id, 6, '0', STR_PAD_LEFT),
             'payment_date' => $firstItem->tanggal_bayar,
             'receipt_date' => $firstItem->tanggal_kwitansi ?? $firstItem->tanggal_bayar,
@@ -719,6 +783,7 @@ class PembayaranController extends Controller
             'total_paid' => (float) $pembayaranItems->sum('jumlah_bayar'),
             'total_discount' => (float) $pembayaranItems->sum('diskon'),
             'pdf_url' => route('pembayaran.kwitansi.grup.pdf', ['ids' => implode(',', $pembayaranItems->pluck('id')->all())]),
+            'back_url' => route('riwayat.index'),
         ];
 
         return $receipt;
@@ -741,7 +806,7 @@ class PembayaranController extends Controller
         try {
             $pdf = app('dompdf.wrapper')
                 ->loadView('tagihan.kwitansi.pdf', compact('receipt'))
-                ->setPaper('a4', 'portrait')
+                ->setPaper('a5', 'portrait')
                 ->setOption('isRemoteEnabled', false);
         } catch (\Throwable $exception) {
             report($exception);

@@ -179,7 +179,7 @@
                                 <a href="{{ route('log_aktivitas.show', $log->id) }}" class="btn-detail">Detail</a>
 
                                 <form action="{{ route('log_aktivitas.destroy', $log->id) }}" method="POST"
-                                      onsubmit="return confirm('Yakin ingin menghapus log ini?');">
+                                      data-confirm-title="Hapus aktivitas" data-confirm-message="Riwayat aktivitas ini akan dihapus." data-confirm-label="Hapus" data-confirm-tone="danger">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-delete"><i class="fas fa-trash"></i> Hapus</button>
@@ -202,7 +202,7 @@
         {{-- Tombol Hapus Semua Riwayat --}}
         <div class="mt-5">
             <form action="{{ route('log_aktivitas.destroyAll') }}" method="POST"
-                  onsubmit="return confirm('Yakin ingin menghapus SEMUA riwayat aktivitas? Tindakan ini tidak bisa dibatalkan.');">
+                  data-confirm-title="Hapus semua aktivitas" data-confirm-message="Semua riwayat aktivitas akan dihapus dan tindakan ini tidak dapat dibatalkan." data-confirm-label="Hapus semua" data-confirm-tone="danger">
                 @csrf
                 @method('DELETE')
                 <button type="submit"

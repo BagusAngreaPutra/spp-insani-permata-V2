@@ -398,7 +398,7 @@
                 </div>
 
                 <div class="promotion-form-actions">
-                    <button type="submit" class="btn btn-primary" onclick="return confirm('Apakah Anda yakin ingin memproses kenaikan kelas?')">
+                    <button type="submit" class="btn btn-primary" data-confirm-title="Proses kenaikan kelas" data-confirm-message="Proses kenaikan kelas untuk siswa yang dipilih?" data-confirm-label="Proses kenaikan" data-confirm-tone="success">
                         <i class="fas fa-arrow-up"></i>
                         Proses Kenaikan Kelas
                     </button>
@@ -462,7 +462,7 @@
                                         <form action="{{ route('kenaikan.cancel', ['siswa_id' => $student['id']]) }}" 
                                               method="POST" 
                                               style="display: inline;"
-                                              onsubmit="return confirm('Apakah Anda yakin ingin membatalkan kenaikan kelas untuk {{ $student['nama'] }}?')">
+                                              data-confirm-title="Batalkan kenaikan kelas" data-confirm-message="Batalkan kenaikan kelas untuk {{ $student['nama'] }}?" data-confirm-label="Batalkan" data-confirm-tone="warning">
                                             @csrf
                                             @method('POST')
                                             <button type="submit" class="btn btn-cancel">

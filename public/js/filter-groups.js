@@ -120,7 +120,14 @@
             '</span>',
         ].join('');
 
-        const firstLayoutGroup = directChildOfForm(form.querySelector('.filter-grid, .filter-row'), form);
+        const firstLayoutGroup = directChildOfForm(form.querySelector([
+            '.history-filter-grid',
+            '.filter-grid',
+            '.filter-row',
+            '.billing-filter-grid',
+            '.overview-filter-grid',
+            '.report-filter-grid',
+        ].join(',')), form);
         form.insertBefore(generalLabel, firstLayoutGroup || form.firstChild);
 
         const panelId = `advanced-filter-${formIndex}`;
@@ -133,7 +140,13 @@
             '<span>Filter khusus</span>',
             '<span class="pi-advanced-filter-count" aria-label="Filter khusus aktif"></span>',
         ].join('');
-        generalLabel.appendChild(toggle);
+        if (firstLayoutGroup) {
+            firstLayoutGroup.classList.add('pi-filter-primary-grid');
+            const resetAnchor = firstLayoutGroup.querySelector('[data-filter-reset]');
+            firstLayoutGroup.insertBefore(toggle, resetAnchor || null);
+        } else {
+            generalLabel.appendChild(toggle);
+        }
 
         const panel = document.createElement('section');
         panel.id = panelId;
@@ -166,7 +179,8 @@
             toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         };
 
-        setExpanded(updateActiveCount() > 0);
+        updateActiveCount();
+        setExpanded(false);
         toggle.addEventListener('click', () => {
             setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
         });

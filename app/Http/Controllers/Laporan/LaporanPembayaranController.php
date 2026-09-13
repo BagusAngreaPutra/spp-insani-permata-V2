@@ -32,7 +32,7 @@ class LaporanPembayaranController extends Controller
         }
 
         // Query awal
-        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah']);
+        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran']);
 
         // Filter berdasarkan request
         if ($request->filled('sekolah_id')) {
@@ -63,17 +63,35 @@ class LaporanPembayaranController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->whereHas('siswa', function ($q) use ($request) {
-                $q->where('nama', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nomor_kwitansi', 'like', '%' . $search . '%')
+                    ->orWhere('transaction_id', 'like', '%' . $search . '%')
+                    ->orWhereHas('siswa', function ($studentQuery) use ($search) {
+                        $studentQuery->where('nama', 'like', '%' . $search . '%')
+                            ->orWhere('nis', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('tagihan', function ($billQuery) use ($search) {
+                        $billQuery->where('nama_tagihan', 'like', '%' . $search . '%')
+                            ->orWhere('periode', 'like', '%' . $search . '%');
+                    });
             });
         }
 
         $pembayarans = $query->latest()->get();
         
         // Hitung subtotal berdasarkan metode pembayaran
-        $subtotal = $pembayarans->groupBy('metode_bayar')->map(function ($items) {
+        $subtotal = $pembayarans->groupBy(fn ($item) => strtolower(trim((string) $item->metode_bayar)))->map(function ($items) {
             return $items->sum('jumlah_bayar');
         });
+
+        $reportSummary = [
+            'transactions' => $pembayarans->groupBy(fn ($item) => $item->transaction_id ?: ($item->nomor_kwitansi ?: 'payment-' . $item->id))->count(),
+            'students' => $pembayarans->pluck('siswa_id')->filter()->unique()->count(),
+            'gross' => (float) $pembayarans->sum(fn ($item) => (float) $item->jumlah_bayar + (float) $item->diskon),
+            'discount' => (float) $pembayarans->sum('diskon'),
+            'received' => (float) $pembayarans->sum('jumlah_bayar'),
+        ];
 
         $sekolah = [
             'nama'   => 'SD IT Permata Insani Islamic School',
@@ -82,13 +100,13 @@ class LaporanPembayaranController extends Controller
             'email'  => 'permatainsani.sch@gmail.com'
         ];
 
-        return view('laporan.pembayaran', compact('pembayarans', 'subtotal', 'tanggalLaporan', 'sekolah', 'daftarSekolah', 'daftarKelas'));
+        return view('laporan.pembayaran', compact('pembayarans', 'subtotal', 'reportSummary', 'tanggalLaporan', 'sekolah', 'daftarSekolah', 'daftarKelas'));
     }
 
     public function exportExcel(Request $request)
     {
         // Apply same filters as index method
-        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah']);
+        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran']);
 
         // Filter berdasarkan request
         if ($request->filled('sekolah_id')) {
@@ -118,15 +136,25 @@ class LaporanPembayaranController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->whereHas('siswa', function ($q) use ($request) {
-                $q->where('nama', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nomor_kwitansi', 'like', '%' . $search . '%')
+                    ->orWhere('transaction_id', 'like', '%' . $search . '%')
+                    ->orWhereHas('siswa', function ($studentQuery) use ($search) {
+                        $studentQuery->where('nama', 'like', '%' . $search . '%')
+                            ->orWhere('nis', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('tagihan', function ($billQuery) use ($search) {
+                        $billQuery->where('nama_tagihan', 'like', '%' . $search . '%')
+                            ->orWhere('periode', 'like', '%' . $search . '%');
+                    });
             });
         }
 
         $pembayarans = $query->latest()->get();
         
         // Hitung subtotal berdasarkan metode pembayaran
-        $subtotal = $pembayarans->groupBy('metode_bayar')->map(function ($items) {
+        $subtotal = $pembayarans->groupBy(fn ($item) => strtolower(trim((string) $item->metode_bayar)))->map(function ($items) {
             return $items->sum('jumlah_bayar');
         });
 
@@ -134,7 +162,7 @@ class LaporanPembayaranController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         // Judul
-        $sheet->setCellValue('A1', 'LAPORAN DATA PEMBAYARAN');
+        $sheet->setCellValue('A1', 'LAPORAN TAGIHAN SISWA');
         $sheet->mergeCells('A1:J1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal('center');
@@ -191,15 +219,15 @@ class LaporanPembayaranController extends Controller
         // Header tabel
         $headerRow = $rowSubtotal + 2;
         $sheet->setCellValue('A'.$headerRow, 'No');
-        $sheet->setCellValue('B'.$headerRow, 'Nama Siswa');
-        $sheet->setCellValue('C'.$headerRow, 'Kelas');
-        $sheet->setCellValue('D'.$headerRow, 'Jumlah Bayar');
-        $sheet->setCellValue('E'.$headerRow, 'Tanggal Bayar');
-        $sheet->setCellValue('F'.$headerRow, 'Metode Bayar');
-        $sheet->setCellValue('G'.$headerRow, 'Keterangan');
-        $sheet->setCellValue('H'.$headerRow, 'Cicilan Ke');
-        $sheet->setCellValue('I'.$headerRow, 'Total Cicilan');
-        $sheet->setCellValue('J'.$headerRow, 'Subtotal');
+        $sheet->setCellValue('B'.$headerRow, 'Tanggal Bayar');
+        $sheet->setCellValue('C'.$headerRow, 'No. Kuitansi / Transaksi');
+        $sheet->setCellValue('D'.$headerRow, 'Siswa / NIS');
+        $sheet->setCellValue('E'.$headerRow, 'Sekolah / Kelas');
+        $sheet->setCellValue('F'.$headerRow, 'Tagihan / Periode');
+        $sheet->setCellValue('G'.$headerRow, 'Nilai Tagihan');
+        $sheet->setCellValue('H'.$headerRow, 'Potongan');
+        $sheet->setCellValue('I'.$headerRow, 'Diterima');
+        $sheet->setCellValue('J'.$headerRow, 'Metode / Keterangan');
         
         // Style header
         $sheet->getStyle('A'.$headerRow.':J'.$headerRow)->getFont()->setBold(true);
@@ -216,18 +244,18 @@ class LaporanPembayaranController extends Controller
         
         foreach ($pembayarans as $p) {
             $sheet->setCellValue('A'.$row, $no++);
-            $sheet->setCellValue('B'.$row, $p->siswa->nama ?? '-');
-            $sheet->setCellValue('C'.$row, ($p->siswa->kelas->tingkat ?? '-') . ' ' . ($p->siswa->kelas->nama_kelas ?? ''));
-            $sheet->setCellValue('D'.$row, $p->jumlah_bayar);
-            $sheet->setCellValue('E'.$row, Carbon::parse($p->tanggal_bayar)->format('d/m/Y'));
-            $sheet->setCellValue('F'.$row, ucfirst($p->metode_bayar));
-            $sheet->setCellValue('G'.$row, $p->keterangan ?? '-');
-            $sheet->setCellValue('H'.$row, $p->cicilan_ke ?? '-');
-            $sheet->setCellValue('I'.$row, $p->total_cicilan ?? '-');
-            $sheet->setCellValue('J'.$row, 'Rp ' . number_format($subtotal[$p->metode_bayar] ?? 0, 0, ',', '.'));
+            $sheet->setCellValue('B'.$row, optional($p->tanggal_bayar)->format('d/m/Y'));
+            $sheet->setCellValue('C'.$row, ($p->nomor_kwitansi ?: '-') . ' / ' . ($p->transaction_id ?: 'Transaksi #' . $p->id));
+            $sheet->setCellValue('D'.$row, ($p->siswa?->nama ?? '-') . ' / ' . ($p->siswa?->nis ?? '-'));
+            $sheet->setCellValue('E'.$row, ($p->siswa?->sekolah?->nama_sekolah ?? '-') . ' / ' . (($p->siswa?->kelas?->tingkat ?? '-') . ' ' . ($p->siswa?->kelas?->nama_kelas ?? '')));
+            $sheet->setCellValue('F'.$row, ($p->tagihan->nama_tagihan ?? 'Tagihan') . ' / ' . ($p->periode ?: ($p->tagihan->periode ?? '-')));
+            $sheet->setCellValue('G'.$row, (float) $p->jumlah_bayar + (float) $p->diskon);
+            $sheet->setCellValue('H'.$row, (float) $p->diskon);
+            $sheet->setCellValue('I'.$row, (float) $p->jumlah_bayar);
+            $sheet->setCellValue('J'.$row, ucfirst((string) $p->metode_bayar) . ' / ' . ($p->keterangan ?? '-'));
             
             // Format currency untuk jumlah bayar
-            $sheet->getStyle('D'.$row)->getNumberFormat()
+            $sheet->getStyle('G'.$row.':I'.$row)->getNumberFormat()
                 ->setFormatCode('#,##0');
             
             // Borders
@@ -240,10 +268,12 @@ class LaporanPembayaranController extends Controller
 
         // Total
         $sheet->setCellValue('A'.$row, 'TOTAL');
-        $sheet->mergeCells('A'.$row.':C'.$row);
-        $sheet->setCellValue('D'.$row, $totalBayar);
+        $sheet->mergeCells('A'.$row.':F'.$row);
+        $sheet->setCellValue('G'.$row, $pembayarans->sum(fn ($item) => (float) $item->jumlah_bayar + (float) $item->diskon));
+        $sheet->setCellValue('H'.$row, $pembayarans->sum('diskon'));
+        $sheet->setCellValue('I'.$row, $totalBayar);
         $sheet->getStyle('A'.$row.':J'.$row)->getFont()->setBold(true);
-        $sheet->getStyle('D'.$row)->getNumberFormat()
+        $sheet->getStyle('G'.$row.':I'.$row)->getNumberFormat()
             ->setFormatCode('#,##0');
         $sheet->getStyle('A'.$row.':J'.$row)->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
@@ -256,7 +286,7 @@ class LaporanPembayaranController extends Controller
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $filename = 'Laporan_Pembayaran_'.Carbon::now()->format('Ymd_His').'.xlsx';
+        $filename = 'Laporan_Tagihan_Siswa_'.Carbon::now()->format('Ymd_His').'.xlsx';
         $writer = new Xlsx($spreadsheet);
         $temp_file = tempnam(sys_get_temp_dir(), 'excel');
         $writer->save($temp_file);

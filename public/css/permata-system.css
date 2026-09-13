@@ -9407,7 +9407,7 @@
 
     @media print {
         @page {
-            margin: 12mm;
+            margin: 7mm;
         }
 
         html:has(.main-content.pi-report-page),
@@ -9873,6 +9873,34 @@
         #pi-report-page .signature-box p {
             margin: 0 0 1mm !important;
         }
+
+        #pi-report-page table.payment-report-table {
+            width: calc(100% - 1mm) !important;
+            margin-right: .5mm !important;
+            margin-left: .5mm !important;
+            table-layout: fixed !important;
+        }
+
+        #pi-report-page table.payment-report-table :is(th, td) {
+            padding: .55mm .65mm !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-word !important;
+            white-space: normal !important;
+            font-size: 6pt !important;
+            line-height: 1.14 !important;
+        }
+
+        #pi-report-page table.payment-report-table thead th {
+            padding: .45mm .55mm !important;
+            font-size: 5.3pt !important;
+            line-height: 1.08 !important;
+            vertical-align: middle !important;
+        }
+
+        #pi-report-page table.payment-report-table th:first-child,
+        #pi-report-page table.payment-report-table td:first-child {
+            text-align: center !important;
+        }
     }
 
 /* Rupiah input styles */
@@ -9887,3 +9915,156 @@ body:has(.app-sidebar) .main-content input.pi-rupiah-input {
         color: #344054 !important;
         background-image: linear-gradient(90deg, rgba(79, 70, 229, .025), transparent 58%) !important;
     }
+
+/* Warna ikon sidebar agar setiap fungsi lebih cepat dikenali. */
+body:has(.app-sidebar) .app-sidebar .fa-arrow-trend-up { color: #16a34a !important; }
+body:has(.app-sidebar) .app-sidebar .fa-receipt { color: #2563eb !important; }
+body:has(.app-sidebar) .app-sidebar .fa-store { color: #ea580c !important; }
+body:has(.app-sidebar) .app-sidebar .fa-coins { color: #ca8a04 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-building-columns { color: #7c3aed !important; }
+body:has(.app-sidebar) .app-sidebar .fa-school { color: #0891b2 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-calendar-days { color: #db2777 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-user-graduate { color: #4f46e5 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-user-tie { color: #9333ea !important; }
+body:has(.app-sidebar) .app-sidebar .fa-tags { color: #e11d48 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-clock-rotate-left { color: #0f766e !important; }
+body:has(.app-sidebar) .app-sidebar .fa-graduation-cap { color: #0284c7 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-arrow-up-right-dots { color: #f97316 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-medal { color: #d97706 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-chart-column { color: #7c3aed !important; }
+body:has(.app-sidebar) .app-sidebar .fa-chart-line { color: #059669 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-file-invoice-dollar { color: #2563eb !important; }
+body:has(.app-sidebar) .app-sidebar .fa-sliders { color: #475569 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-percent { color: #16a34a !important; }
+body:has(.app-sidebar) .app-sidebar .fa-file-import { color: #0d9488 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-file-export { color: #4f46e5 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-database { color: #be123c !important; }
+body:has(.app-sidebar) .app-sidebar .fa-magnifying-glass,
+body:has(.app-sidebar) .app-sidebar .fa-chevron-down { color: #94a3b8 !important; }
+body:has(.app-sidebar) .app-sidebar .fa-arrow-right-from-bracket { color: #dc2626 !important; }
+
+/* Warna nominal pada modul Tagihan Siswa. */
+body:has(.app-sidebar) .main-content .billing-money.is-nominal,
+body:has(.app-sidebar) .main-content .payment-stat.is-nominal > strong,
+body:has(.app-sidebar) .main-content .billing-stat.is-nominal-summary .billing-stat-note {
+    color: #2563eb !important;
+    font-weight: 700 !important;
+}
+
+body:has(.app-sidebar) .main-content .billing-money.is-paid,
+body:has(.app-sidebar) .main-content .payment-stat.is-success > strong,
+body:has(.app-sidebar) .main-content .billing-stat.is-green .billing-stat-value {
+    color: #079455 !important;
+    font-weight: 700 !important;
+}
+
+/* Tombol status tagihan: satu ukuran dan warna pada tabel maupun kartu. */
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 28px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
+    height: 28px !important;
+    margin: 0 !important;
+}
+
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button {
+    display: inline-grid !important;
+    place-items: center !important;
+    box-sizing: border-box !important;
+    flex: 0 0 28px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #a96973 !important;
+    background: #fff4f6 !important;
+    border: 1px solid #f3d5db !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    opacity: .72 !important;
+    transform: none !important;
+}
+
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button.is-inactive {
+    color: #568573 !important;
+    background: #f1faf6 !important;
+    border-color: #cce9da !important;
+    opacity: .76 !important;
+}
+
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button:hover {
+    color: #912018 !important;
+    background: #fee4e2 !important;
+    border-color: #fda29b !important;
+    box-shadow: 0 2px 6px rgba(16, 24, 40, .08) !important;
+    opacity: 1 !important;
+}
+
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button.is-inactive:hover {
+    color: #05603a !important;
+    background: #d1fadf !important;
+    border-color: #75e0a7 !important;
+    opacity: 1 !important;
+}
+
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button::before,
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button::after {
+    display: none !important;
+    content: none !important;
+}
+
+body:has(.app-sidebar) .main-content #billSelectionPanel .payment-activation-form > .payment-activation-button > i {
+    width: auto !important;
+    margin: 0 !important;
+    color: inherit !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+}
+
+/* Sejajarkan pusat kolom Aksi antara tabel SPP dan tagihan satuan. */
+@media (min-width: 761px) {
+    body:has(.app-sidebar) .main-content #billSelectionPanel .payment-bill-table col.payment-col-action {
+        width: 68px !important;
+    }
+
+    body:has(.app-sidebar) .main-content #billSelectionPanel .payment-bill-table :is(th, td):nth-child(8) {
+        width: 68px !important;
+        min-width: 68px !important;
+        max-width: 68px !important;
+        padding-right: 12px !important;
+        padding-left: 0 !important;
+        text-align: right !important;
+    }
+
+    body:has(.app-sidebar) .main-content #billSelectionPanel .payment-single-grid {
+        grid-template-columns: 5fr 18fr 15fr 12fr 13fr 12fr 18fr 68px !important;
+    }
+
+    body:has(.app-sidebar) .main-content #billSelectionPanel .payment-single-head > span:last-child,
+    body:has(.app-sidebar) .main-content #billSelectionPanel .payment-single-action {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        box-sizing: border-box !important;
+        width: 68px !important;
+        min-width: 68px !important;
+        max-width: 68px !important;
+        margin: 0 !important;
+        padding-right: 12px !important;
+        padding-left: 0 !important;
+        text-align: right !important;
+    }
+
+    body:has(.app-sidebar) .main-content #billSelectionPanel .payment-single-action .payment-activation-form {
+        justify-self: auto !important;
+        margin-left: auto !important;
+    }
+}

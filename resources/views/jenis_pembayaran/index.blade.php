@@ -382,7 +382,7 @@
                                         <i class="fas fa-pen" aria-hidden="true"></i>
                                         <span>Edit</span>
                                     </a>
-                                    <form action="{{ route('jenis_pembayaran.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?')">
+                                    <form action="{{ route('jenis_pembayaran.destroy', $item->id) }}" method="POST" data-confirm-title="Hapus jenis pembayaran" data-confirm-message="Jenis pembayaran ini akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn-delete" title="Hapus jenis pembayaran">

@@ -25,18 +25,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LogAktivitasController;
 use App\Http\Controllers\SiswaImportController;
 use App\Http\Controllers\Admin\SiswaExportController;
-use App\Http\Controllers\Laporan\LaporanAdminController;
-use App\Http\Controllers\Laporan\LaporanJenisPembayaranController;
 use App\Http\Controllers\Laporan\LaporanPembayaranController;
-use App\Http\Controllers\Laporan\LaporanPengeluaranController;
 use App\Http\Controllers\Laporan\LaporanPemasukanController;
 use App\Http\Controllers\Laporan\LaporanKoperasiController;
-use App\Http\Controllers\Laporan\LaporanSekolahController;
-use App\Http\Controllers\Laporan\LaporanSiswaController;
-use App\Http\Controllers\Laporan\LaporanTahunAjaranController;
-use App\Http\Controllers\Laporan\LaporanKenaikanController;
+use App\Http\Controllers\Laporan\LaporanTransaksiController;
 use App\Http\Controllers\KelulusanKelasController;
-use App\Http\Controllers\Laporan\LaporanKelulusanController;
+use App\Http\Controllers\SppDiscountSettingController;
 
 
 
@@ -114,6 +108,12 @@ Route::middleware('auth:web')->group(function () {
         ->middleware('permission:siswa.manage,tagihan.manage')
         ->name('siswa.kelas_by_sekolah');
     Route::resource('jenis_pembayaran', JenisPembayaranController::class)->except(['show'])->middleware('permission:jenis_pembayaran.manage');
+    Route::get('/pengaturan/diskon-spp', [SppDiscountSettingController::class, 'edit'])
+        ->middleware('permission:tagihan.manage')
+        ->name('pengaturan.diskon-spp.edit');
+    Route::put('/pengaturan/diskon-spp', [SppDiscountSettingController::class, 'update'])
+        ->middleware('permission:tagihan.manage')
+        ->name('pengaturan.diskon-spp.update');
     Route::get('/jenis-pembayaran/get-data-by-sekolah/{sekolahId}', [JenisPembayaranController::class, 'getDataBySekolah'])
         ->middleware('permission:jenis_pembayaran.manage,tagihan.manage');
     Route::get('/koperasi/penjualan', [KoperasiPenjualanController::class, 'index'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.index');
@@ -121,6 +121,7 @@ Route::middleware('auth:web')->group(function () {
     Route::post('/koperasi/penjualan', [KoperasiPenjualanController::class, 'store'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.store');
     Route::get('/koperasi/penjualan/{id}', [KoperasiPenjualanController::class, 'show'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.show');
     Route::get('/koperasi/penjualan/{id}/kwitansi', [KoperasiPenjualanController::class, 'cetakKwitansi'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.kwitansi');
+    Route::get('/koperasi/penjualan/{id}/kwitansi/pdf', [KoperasiPenjualanController::class, 'unduhKwitansiPdf'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.kwitansi.pdf');
     Route::delete('/koperasi/penjualan/{id}', [KoperasiPenjualanController::class, 'destroy'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.destroy');
     Route::get('/koperasi/{id}/stok', [KoperasiController::class, 'editStok'])->middleware('permission:koperasi.stok.manage')->name('koperasi.stok.edit');
     Route::put('/koperasi/{id}/stok', [KoperasiController::class, 'updateStok'])->middleware('permission:koperasi.stok.manage')->name('koperasi.stok.update');
@@ -134,6 +135,7 @@ Route::middleware('auth:web')->group(function () {
     Route::post('/tagihan/generate-manual', [TagihanController::class, 'generateTagihanManual'])->middleware('permission:tagihan.manage')->name('tagihan.generate.manual');
     Route::post('/tagihan/generate-manual-siswa/{siswaId}', [TagihanController::class, 'generateTagihanManualSiswa'])->middleware('permission:tagihan.manage')->name('tagihan.generate.manual.siswa');
     Route::post('/tagihan/proses-multi', [TagihanController::class, 'prosesMultiPembayaran'])->middleware('permission:pembayaran.process')->name('tagihan.proses.multi');
+    Route::patch('/tagihan/{tagihan}/status-aktif', [TagihanController::class, 'toggleActive'])->middleware('permission:tagihan.manage')->name('tagihan.toggle-active');
     Route::get('/tagihan/sinkronisasi-nama', [TagihanController::class, 'sinkronisasiNama'])->middleware('permission:tagihan.manage')->name('tagihan.sinkronisasi.nama');
     Route::delete('/tagihan/{tagihan}', [TagihanController::class, 'destroy'])->middleware('permission:tagihan.manage')->name('tagihan.destroy');
     Route::get('/tagihan/get-students-summary/{sekolahId}/{kelasId}', [TagihanController::class, 'getStudentsSummary'])->middleware('permission:tagihan.manage,pembayaran.process')->name('tagihan.students.summary');
@@ -177,55 +179,20 @@ Route::middleware('auth:web')->group(function () {
         ->name('export_excel.download');
 
     
-    Route::get('/laporan/admin', [LaporanAdminController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.admin');
-    Route::get('/laporan/admin/excel', [LaporanAdminController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.admin.excel');
-    Route::get('/laporan/jenis-pembayaran', [LaporanJenisPembayaranController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.jenis_pembayaran');
-    Route::get('/laporan/jenis-pembayaran/excel', [LaporanJenisPembayaranController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.jenis_pembayaran.excel');
-    Route::get('/laporan/kelas', function () {
-        return redirect()->route('laporan.sekolah', request()->query());
-    })->middleware('permission:laporan.view')->name('laporan.kelas');
-    Route::get('/laporan/kelas/excel', function () {
-        return redirect()->route('laporan.sekolah.excel', request()->query());
-    })->middleware('permission:laporan.export')->name('laporan.kelas.excel');
-    
-Route::get('/laporan/pembayaran', [LaporanPembayaranController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.pembayaran');
-Route::get('/laporan/pembayaran/excel', [LaporanPembayaranController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.pembayaran.excel');
-Route::get('/laporan/pengeluaran', [LaporanPengeluaranController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.pengeluaran');
-Route::get('/laporan/pengeluaran/excel', [LaporanPengeluaranController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.pengeluaran.excel');
-
-
-Route::get('/laporan/pemasukan', [LaporanPemasukanController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.pemasukan');
-Route::get('/laporan/pemasukan/excel', [LaporanPemasukanController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.pemasukan.excel');
-
-Route::get('/laporan/koperasi', [LaporanKoperasiController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.koperasi');
-Route::get('/laporan/koperasi/excel', [LaporanKoperasiController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.koperasi.excel');
-
-
-Route::get('/laporan/sekolah', [LaporanSekolahController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.sekolah');
-Route::get('/laporan/sekolah/excel', [LaporanSekolahController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.sekolah.excel');
-
-Route::get('/laporan/siswa', [LaporanSiswaController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.siswa');
-Route::get('/laporan/siswa/excel', [LaporanSiswaController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.siswa.excel');
-
-Route::get('/laporan/tahun-ajaran', [LaporanTahunAjaranController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.tahun_ajaran');
-Route::get('/laporan/tahun-ajaran/excel', [LaporanTahunAjaranController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.tahun_ajaran.excel');
+    Route::get('/laporan/transaksi', [LaporanTransaksiController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.transaksi');
+    Route::get('/laporan/transaksi/excel', [LaporanTransaksiController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.transaksi.excel');
+    Route::get('/laporan/tagihan-siswa', [LaporanPembayaranController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.tagihan_siswa');
+    Route::get('/laporan/tagihan-siswa/excel', [LaporanPembayaranController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.tagihan_siswa.excel');
+    Route::get('/laporan/pemasukan', [LaporanPemasukanController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.pemasukan');
+    Route::get('/laporan/pemasukan/excel', [LaporanPemasukanController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.pemasukan.excel');
+    Route::get('/laporan/koperasi', [LaporanKoperasiController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.koperasi');
+    Route::get('/laporan/koperasi/excel', [LaporanKoperasiController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.koperasi.excel');
 
 // Halaman daftar siswa kelas tingkat 6
 Route::get('/kelulusan-kelas', [KelulusanKelasController::class, 'index'])->middleware('permission:kelulusan.manage')->name('kelulusan.index');
 
 // Aksi untuk ubah status jadi lulus
 Route::post('/kelulusan-kelas/{id}/update-status', [KelulusanKelasController::class, 'updateStatus'])->middleware('permission:kelulusan.manage')->name('kelulusan.updateStatus');
-
-Route::get('/laporan/kenaikan', [LaporanKenaikanController::class, 'index'])->middleware('permission:laporan.view')->name('laporan.kenaikan');
-Route::get('/laporan/kenaikan/excel', [LaporanKenaikanController::class, 'exportExcel'])->middleware('permission:laporan.export')->name('laporan.kenaikan.excel');
-
-Route::get('/laporan/kelulusan', [LaporanKelulusanController::class, 'index'])
-    ->middleware('permission:laporan.view')
-    ->name('laporan.kelulusan');
-
-Route::get('/laporan/kelulusan/excel', [LaporanKelulusanController::class, 'exportExcel'])
-    ->middleware('permission:laporan.export')
-    ->name('laporan.kelulusan.excel');
 
 });
 

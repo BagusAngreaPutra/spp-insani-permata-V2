@@ -162,6 +162,8 @@
             </a>
         </div>
 
+        @include('partials.transaction-tabs', ['module' => 'pemasukan', 'active' => 'data'])
+
         <div class="table-container">
             <table class="modern-table">
                 <thead>
@@ -184,7 +186,7 @@
                             <td>{{ $item->keterangan ?? '-' }}</td>
                             <td class="flex gap-2">
                                 <a href="{{ route('pemasukan.edit', $item->id) }}" class="btn-edit">Edit</a>
-                                <form action="{{ route('pemasukan.destroy', $item->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Hapus data ini?')">
+                                <form action="{{ route('pemasukan.destroy', $item->id) }}" method="POST" style="display:inline;" data-confirm-title="Hapus pemasukan" data-confirm-message="Data pemasukan ini akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-delete">Hapus</button>

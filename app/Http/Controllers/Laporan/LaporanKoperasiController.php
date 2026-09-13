@@ -33,6 +33,9 @@ class LaporanKoperasiController extends Controller
         $totalPenjualan = $penjualan->sum('total');
         $totalTransaksi = $penjualan->count();
         $totalBarangTerjual = $penjualan->sum(fn ($item) => $item->details->sum('jumlah'));
+        $totalSiswa = $penjualan->pluck('siswa_id')->filter()->unique()->count();
+        $jenisBarangTerjual = $penjualan->flatMap(fn ($item) => $item->details)->pluck('koperasi_id')->filter()->unique()->count();
+        $rataRataTransaksi = $totalTransaksi > 0 ? $totalPenjualan / $totalTransaksi : 0;
 
         return view('laporan.koperasi', compact(
             'penjualan',
@@ -41,7 +44,10 @@ class LaporanKoperasiController extends Controller
             'daftarKelas',
             'totalPenjualan',
             'totalTransaksi',
-            'totalBarangTerjual'
+            'totalBarangTerjual',
+            'totalSiswa',
+            'jenisBarangTerjual',
+            'rataRataTransaksi'
         ));
     }
 
@@ -53,17 +59,17 @@ class LaporanKoperasiController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('A1', 'LAPORAN PENJUALAN KOPERASI');
-        $sheet->mergeCells('A1:J1');
+        $sheet->mergeCells('A1:K1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal('center');
 
         $sheet->setCellValue('A2', 'SD IT PERMATA INSANI');
-        $sheet->mergeCells('A2:J2');
+        $sheet->mergeCells('A2:K2');
         $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A2')->getAlignment()->setHorizontal('center');
 
         $sheet->setCellValue('A3', 'Tanggal Cetak: ' . Carbon::now()->translatedFormat('d F Y'));
-        $sheet->mergeCells('A3:J3');
+        $sheet->mergeCells('A3:K3');
 
         $sheet->setCellValue('A5', 'Total Transaksi');
         $sheet->setCellValue('B5', $penjualan->count());
@@ -85,17 +91,18 @@ class LaporanKoperasiController extends Controller
             'H' => 'Barang',
             'I' => 'Jumlah Item',
             'J' => 'Total',
+            'K' => 'Catatan',
         ];
 
         foreach ($headers as $column => $label) {
             $sheet->setCellValue($column . $headerRow, $label);
         }
 
-        $sheet->getStyle('A' . $headerRow . ':J' . $headerRow)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $headerRow . ':J' . $headerRow)->getFill()
+        $sheet->getStyle('A' . $headerRow . ':K' . $headerRow)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $headerRow . ':K' . $headerRow)->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFD1FAE5');
-        $sheet->getStyle('A' . $headerRow . ':J' . $headerRow)->getBorders()->getAllBorders()
+        $sheet->getStyle('A' . $headerRow . ':K' . $headerRow)->getBorders()->getAllBorders()
             ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
         $row = $headerRow + 1;
@@ -110,6 +117,7 @@ class LaporanKoperasiController extends Controller
             $sheet->setCellValue('H' . $row, $item->details->map(fn ($detail) => $detail->nama_barang . ' (' . $detail->jumlah . ')')->implode(', '));
             $sheet->setCellValue('I' . $row, $item->details->sum('jumlah'));
             $sheet->setCellValue('J' . $row, $item->total);
+            $sheet->setCellValue('K' . $row, $item->catatan ?: '-');
             $sheet->getStyle('J' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $row++;
         }
@@ -119,7 +127,7 @@ class LaporanKoperasiController extends Controller
         $sheet->getStyle('I' . $row . ':J' . $row)->getFont()->setBold(true);
         $sheet->getStyle('J' . $row)->getNumberFormat()->setFormatCode('#,##0');
 
-        foreach (range('A', 'J') as $column) {
+        foreach (range('A', 'K') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 

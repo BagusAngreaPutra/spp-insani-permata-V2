@@ -413,6 +413,11 @@
 </style>
 @endpush
 
+{{-- Diletakkan setelah stylesheet global agar orientasi laporan ini tidak kembali menjadi portrait. --}}
+<style media="print">
+    @page { size: A4 landscape; margin: 7mm; }
+</style>
+
 <div id="pi-report-page" class="main-content pi-report-page">
     @include('layouts.header')
 
@@ -432,18 +437,18 @@
         <div class="tanggal-laporan d-none d-print-block">
             Dicetak pada: {{ \Carbon\Carbon::now()->format('d/m/Y H:i:s') }}
         </div>
-        <h3 class="print-title d-none d-print-block">LAPORAN PEMBAYARAN</h3>
+        <h3 class="print-title d-none d-print-block">LAPORAN TAGIHAN SISWA</h3>
 
         <div class="page-header no-print">
             <h1 class="page-title">
                 <i class="fas fa-money-bill-wave"></i>
-                Laporan Pembayaran
+                Laporan Tagihan Siswa
             </h1>
             <div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <button class="btn-primary print-btn" onclick="window.print()">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <a href="{{ route('laporan.pembayaran.excel') }}" class="btn-primary export-btn">
+                <a href="{{ route('laporan.tagihan_siswa.excel', request()->query()) }}" class="btn-primary export-btn">
                     <i class="fas fa-file-excel"></i> Download Excel
                 </a>
             </div>
@@ -454,7 +459,7 @@
                 <i class="fas fa-filter"></i> Filter Data
             </h3>
             
-            <form method="GET" action="{{ route('laporan.pembayaran') }}" id="filterForm" class="report-filter-form pi-filter-form">
+            <form method="GET" action="{{ route('laporan.tagihan_siswa') }}" id="filterForm" class="report-filter-form pi-filter-form">
                 <div class="filter-grid">
                     <div class="form-group">
                         <label for="sekolah_id">
@@ -514,11 +519,11 @@
 
                     <div class="form-group">
                         <label for="search">
-                            <i class="fas fa-search"></i> Cari Nama Siswa
+                            <i class="fas fa-search"></i> Cari
                         </label>
                         <input type="text" name="search" id="search" 
                                value="{{ request('search') }}" 
-                               placeholder="Cari nama siswa..."
+                               placeholder="Siswa, NIS, tagihan, transaksi, atau kuitansi..."
                                class="form-control">
                     </div>
 
@@ -528,7 +533,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-search"></i> Tampilkan Data
                     </button>
-                    <a href="{{ route('laporan.pembayaran') }}" class="btn btn-secondary">
+                    <a href="{{ route('laporan.tagihan_siswa') }}" class="btn btn-secondary">
                         <i class="fas fa-redo"></i> Reset
                     </a>
                 </div>
@@ -537,6 +542,32 @@
                     <p><i class="fas fa-exclamation-triangle"></i> <span id="warning-text"></span></p>
                 </div>
             </form>
+        </div>
+
+        <div class="subtotal-section">
+            <h3 class="subtotal-title">Ringkasan Laporan</h3>
+            <div class="subtotal-grid">
+                <div class="subtotal-item">
+                    <div class="subtotal-label">Transaksi</div>
+                    <div class="subtotal-value">{{ number_format($reportSummary['transactions'], 0, ',', '.') }}</div>
+                </div>
+                <div class="subtotal-item">
+                    <div class="subtotal-label">Siswa Membayar</div>
+                    <div class="subtotal-value">{{ number_format($reportSummary['students'], 0, ',', '.') }}</div>
+                </div>
+                <div class="subtotal-item">
+                    <div class="subtotal-label">Nilai Tagihan</div>
+                    <div class="subtotal-value">Rp {{ number_format($reportSummary['gross'], 0, ',', '.') }}</div>
+                </div>
+                <div class="subtotal-item">
+                    <div class="subtotal-label">Potongan</div>
+                    <div class="subtotal-value">Rp {{ number_format($reportSummary['discount'], 0, ',', '.') }}</div>
+                </div>
+                <div class="subtotal-item">
+                    <div class="subtotal-label">Total Diterima</div>
+                    <div class="subtotal-value">Rp {{ number_format($reportSummary['received'], 0, ',', '.') }}</div>
+                </div>
+            </div>
         </div>
 
         <!-- Subtotal Section -->
@@ -568,42 +599,63 @@
         <div class="table-container">
             <div class="table-header">
                 <h3 class="table-title">
-                    <i class="fas fa-table"></i> Data Pembayaran
+                    <i class="fas fa-table"></i> Rincian Pembayaran Tagihan
                 </h3>
             </div>
             
             <div class="table-responsive">
                 @if($pembayarans->count() > 0)
-                    <table class="modern-table">
+                    <table class="modern-table payment-report-table">
+                        <colgroup>
+                            <col style="width:3%">
+                            <col style="width:9%">
+                            <col style="width:13%">
+                            <col style="width:13%">
+                            <col style="width:14%">
+                            <col style="width:17%">
+                            <col style="width:8%">
+                            <col style="width:8%">
+                            <col style="width:8%">
+                            <col style="width:7%">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>No</th>
-                                <th>Nama Siswa</th>
-                                <th>Kelas</th>
-                                <th>Jumlah Bayar</th>
                                 <th>Tanggal Bayar</th>
-                                <th>Metode Bayar</th>
+                                <th>No. Kuitansi</th>
+                                <th>Siswa</th>
+                                <th>Sekolah / Kelas</th>
+                                <th>Tagihan / Periode</th>
+                                <th>Nilai</th>
+                                <th>Potongan</th>
+                                <th>Diterima</th>
+                                <th>Metode</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($pembayarans as $i => $p)
                                 <tr>
                                     <td>{{ $i + 1 }}</td>
+                                    <td>{{ optional($p->tanggal_bayar)->format('d/m/Y') }}</td>
                                     <td>
-                                        <strong>{{ $p->siswa->nama ?? '-' }}</strong>
+                                        <strong>{{ $p->nomor_kwitansi ?: '-' }}</strong><br>
+                                        <small>{{ $p->transaction_id ?: 'Transaksi #' . $p->id }}</small>
                                     </td>
                                     <td>
-                                        <span class="badge badge-info">
-                                            {{ $p->siswa->kelas->tingkat ?? '-' }} 
-                                            {{ $p->siswa->kelas->nama_kelas ?? '' }}
-                                        </span>
+                                        <strong>{{ $p->siswa?->nama ?? '-' }}</strong><br>
+                                        <small>NIS {{ $p->siswa?->nis ?? '-' }}</small>
                                     </td>
                                     <td>
-                                        <strong>Rp {{ number_format($p->jumlah_bayar, 0, ',', '.') }}</strong>
+                                        <strong>{{ $p->siswa?->sekolah?->nama_sekolah ?? '-' }}</strong><br>
+                                        <small>{{ $p->siswa?->kelas?->tingkat ?? '-' }} {{ $p->siswa?->kelas?->nama_kelas ?? '' }}</small>
                                     </td>
                                     <td>
-                                        {{ \Carbon\Carbon::parse($p->tanggal_bayar)->format('d/m/Y') }}
+                                        <strong>{{ $p->tagihan->nama_tagihan ?? 'Tagihan' }}</strong><br>
+                                        <small>{{ $p->periode ?: ($p->tagihan->periode ?? '-') }}</small>
                                     </td>
+                                    <td>Rp {{ number_format((float) $p->jumlah_bayar + (float) $p->diskon, 0, ',', '.') }}</td>
+                                    <td>{{ (float) $p->diskon > 0 ? 'Rp ' . number_format($p->diskon, 0, ',', '.') : '-' }}</td>
+                                    <td><strong>Rp {{ number_format($p->jumlah_bayar, 0, ',', '.') }}</strong></td>
                                     <td>
                                         @if($p->metode_bayar == 'tunai')
                                             <span class="badge badge-success">
@@ -620,10 +672,11 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="3" style="text-align: right;">Total:</th>
-                                <th colspan="3">
-                                    Rp {{ number_format($pembayarans->sum('jumlah_bayar'), 0, ',', '.') }}
-                                </th>
+                                <th colspan="6" style="text-align: right;">Total:</th>
+                                <th>Rp {{ number_format($reportSummary['gross'], 0, ',', '.') }}</th>
+                                <th>Rp {{ number_format($reportSummary['discount'], 0, ',', '.') }}</th>
+                                <th>Rp {{ number_format($reportSummary['received'], 0, ',', '.') }}</th>
+                                <th></th>
                             </tr>
                         </tfoot>
                     </table>

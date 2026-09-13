@@ -696,7 +696,7 @@ body {
                                     <form action="{{ route('admin.destroy', $item->id) }}" method="POST" class="action-form">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus admin ini?')">
+                                        <button class="btn btn-sm btn-danger" data-confirm-title="Hapus akun admin" data-confirm-message="Akun admin ini akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger">
                                             <i class="fas fa-trash"></i>
                                             Hapus
                                         </button>

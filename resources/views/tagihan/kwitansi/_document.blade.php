@@ -1,15 +1,14 @@
 @php
-    $student = $receipt['student'];
-    $school = $student?->sekolah;
-    $items = collect($receipt['items']);
-    $paidTotal = (float) $receipt['total_paid'];
-    $discountTotal = (float) $receipt['total_discount'];
+    $student = $receipt['student'] ?? null;
+    $school = $receipt['school'] ?? $student?->sekolah;
+    $items = collect($receipt['items'] ?? []);
+    $paidTotal = (float) ($receipt['total_paid'] ?? $items->sum('amount'));
+    $discountTotal = (float) ($receipt['total_discount'] ?? $items->sum('discount'));
     $transactionTotal = $paidTotal + $discountTotal;
-    $paymentDate = $receipt['payment_date'] ?? $receipt['date'] ?? null;
+    $paymentDate = $receipt['payment_date'] ?? $receipt['date'] ?? now();
     $receiptDate = $receipt['receipt_date'] ?? $paymentDate;
-    $paidAt = $paymentDate ? \Carbon\Carbon::parse($paymentDate) : now();
-    $receiptAt = $receiptDate ? \Carbon\Carbon::parse($receiptDate) : $paidAt;
-    $isGrouped = $items->count() > 1;
+    $paidAt = \Carbon\Carbon::parse($paymentDate);
+    $receiptAt = \Carbon\Carbon::parse($receiptDate);
     $formatRupiah = static fn ($amount) => 'Rp' . number_format((float) $amount, 0, ',', '.');
     $className = trim((string) ($student?->kelas?->nama_kelas ?? ''));
     $classLabel = !$student?->kelas
@@ -22,145 +21,138 @@
         && !preg_match('/^Pembayaran multi-tagihan(?:\s+\(Diskon:.*\))?$/i', $rawNote);
     $spelledAmount = ucfirst(trim(terbilang((int) $paidTotal))) . ' rupiah';
     $logoPath = public_path('images/logo.jpg');
-    $logoData = is_file($logoPath) ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath)) : null;
+    $logoData = is_file($logoPath)
+        ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+        : null;
+    $documentLabel = $receipt['document_label'] ?? ($items->count() > 1 ? 'Kwitansi gabungan' : 'Kwitansi pembayaran');
+    $itemNoun = $receipt['item_noun'] ?? 'tagihan';
+    $systemLabel = $receipt['system_label'] ?? 'Sistem Pembayaran Permata Insani';
 @endphp
 
 <style>
-    @page { size: A4 portrait; margin: 12mm; }
+    .receipt-document, .receipt-document * { box-sizing: border-box; }
+    .receipt-document { width: 100%; color: #1f2937; font-family: Arial, Helvetica, sans-serif; font-size: 8px; line-height: 1.35; }
+    .receipt-document table { width: 100%; border-collapse: collapse; }
+    .receipt-document-header { border-bottom: 1.5px solid #111827; }
+    .receipt-document-header td { padding: 0 0 4.5mm; vertical-align: top; }
+    .receipt-brand-cell { width: 67%; }
+    .receipt-brand-table { width: 100%; }
+    .receipt-brand-table td { padding-bottom: 0; }
+    .receipt-logo-cell { width: 13mm; padding-right: 3mm !important; }
+    .receipt-logo { display: block; width: 10mm; height: 10mm; object-fit: contain; filter: grayscale(1); opacity: .82; }
+    .receipt-brand-copy strong, .receipt-brand-copy span { display: block; }
+    .receipt-brand-copy strong { color: #111827; font-size: 10px; line-height: 1.2; }
+    .receipt-brand-copy span { margin-top: 1mm; color: #667085; font-size: 6.8px; line-height: 1.4; }
+    .receipt-id-cell { width: 33%; text-align: right; }
+    .receipt-label { display: block; color: #667085; font-size: 6.3px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .receipt-number { display: block; margin-top: 1.4mm; color: #111827; font-size: 10px; line-height: 1.2; overflow-wrap: anywhere; }
+    .receipt-state { display: block; margin-top: 1.5mm; color: #087451; font-size: 6.4px; font-weight: 700; text-transform: uppercase; }
+    .receipt-meta { margin: 4mm 0; border-top: .3mm solid #d0d5dd; border-bottom: .3mm solid #d0d5dd; }
+    .receipt-meta td { width: 25%; padding: 2.7mm 2.5mm; vertical-align: top; }
+    .receipt-meta td:first-child { padding-left: 0; }
+    .receipt-meta td + td { border-left: .3mm solid #eaecf0; }
+    .receipt-value { display: block; margin-top: 1mm; color: #344054; font-size: 7.3px; font-weight: 700; overflow-wrap: anywhere; }
+    .receipt-recipient { margin-bottom: 4mm; border-bottom: .3mm solid #d0d5dd; }
+    .receipt-recipient td { width: 50%; padding: 0 0 3.5mm; vertical-align: top; }
+    .receipt-recipient td + td { padding-left: 4mm; border-left: .3mm solid #eaecf0; }
+    .receipt-recipient .receipt-value { color: #111827; font-size: 8px; }
+    .receipt-recipient small { display: block; margin-top: 1mm; color: #667085; font-size: 6.7px; }
+    .receipt-section-heading { margin-bottom: 1.8mm; }
+    .receipt-section-heading strong { color: #111827; font-size: 8px; }
+    .receipt-section-heading span { float: right; color: #667085; font-size: 6.5px; }
+    .receipt-items { table-layout: fixed; border-top: .4mm solid #98a2b3; border-bottom: .4mm solid #98a2b3; }
+    .receipt-items th { padding: 2.2mm 1.4mm; color: #475467; border-bottom: .3mm solid #d0d5dd; font-size: 6.3px; text-align: left; text-transform: uppercase; }
+    .receipt-items td { padding: 2.5mm 1.4mm; color: #344054; border-bottom: .3mm solid #eaecf0; font-size: 7px; vertical-align: middle; overflow-wrap: anywhere; }
+    .receipt-items tbody tr:last-child td { border-bottom: 0; }
+    .receipt-col-number { width: 7%; text-align: center !important; }
+    .receipt-col-description { width: 45%; }
+    .receipt-col-money { width: 16%; text-align: right !important; white-space: nowrap; }
+    .receipt-item-meta { display: block; margin-top: .8mm; color: #667085; font-size: 6.2px; font-weight: 400; }
+    .receipt-totals { margin-top: 3mm; }
+    .receipt-totals td { vertical-align: top; }
+    .receipt-spelled { width: 51%; padding: 1.5mm 4mm 1.5mm 0; }
+    .receipt-spelled strong { display: block; margin-top: 1mm; color: #344054; font-size: 7px; line-height: 1.5; }
+    .receipt-summary { width: 49%; padding-left: 4mm; border-left: .3mm solid #d0d5dd; }
+    .receipt-summary-row { min-height: 5mm; padding: 1mm 0; color: #667085; font-size: 6.8px; }
+    .receipt-summary-row strong { float: right; color: #344054; white-space: nowrap; }
+    .receipt-summary-row.is-total { margin-top: 1mm; padding-top: 2mm; color: #111827; border-top: .3mm solid #d0d5dd; font-size: 7.5px; font-weight: 700; }
+    .receipt-summary-row.is-total strong { color: #111827; font-size: 9px; }
+    .receipt-note { margin-top: 3mm; padding: 2.5mm 0; color: #475467; border-top: .3mm solid #d0d5dd; border-bottom: .3mm solid #d0d5dd; font-size: 6.8px; }
+    .receipt-note strong { display: block; margin-bottom: .8mm; color: #344054; }
+    .receipt-signatures { margin-top: 5mm; border-top: .3mm solid #eaecf0; }
+    .receipt-signatures td { width: 50%; padding-top: 4mm; vertical-align: bottom; }
+    .receipt-validity strong { display: block; color: #344054; font-size: 7px; }
+    .receipt-validity span { display: block; margin-top: 1mm; color: #667085; font-size: 6.2px; line-height: 1.45; }
+    .receipt-signature { color: #475467; font-size: 6.8px; text-align: center; }
+    .receipt-signature-line { display: inline-block; width: 34mm; margin-top: 10mm; padding-top: 1.5mm; color: #111827; border-top: .3mm solid #667085; font-weight: 700; }
+    .receipt-footer { margin-top: 4mm; padding-top: 2mm; color: #667085; border-top: .3mm dashed #d0d5dd; font-size: 5.8px; }
+    .receipt-footer span:last-child { float: right; }
+    .receipt-items tr, .receipt-totals, .receipt-note, .receipt-signatures { page-break-inside: avoid; }
 
-    #receipt-document {
-        width: 182mm;
-        max-width: 100%;
-        min-width: 0;
-        margin: 0 auto;
-        overflow: hidden;
-        color: #181818;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 10px;
-        line-height: 1.45;
+    /* Tipografi kwitansi: satu font dan rentang ukuran yang rapat seperti struk umum. */
+    [data-receipt-document].receipt-document,
+    [data-receipt-document].receipt-document * {
+        font-family: Arial, Helvetica, sans-serif !important;
     }
-
-    #receipt-document table { border-collapse: collapse; }
-
-    #receipt-document .receipt-document-header,
-    #receipt-document .receipt-meta,
-    #receipt-document .receipt-recipient,
-    #receipt-document .receipt-totals-area,
-    #receipt-document .receipt-signature-grid {
-        display: table !important;
-        width: 100% !important;
+    [data-receipt-document].receipt-document {
+        font-size: 10px !important;
+        line-height: 1.4 !important;
     }
-
-    #receipt-document .receipt-document-header { border-bottom: 2px solid #181818; }
-    #receipt-document .receipt-document-header > tbody > tr > td { padding-bottom: 22px; vertical-align: top; }
-    #receipt-document .receipt-brand { display: table-cell !important; width: 64%; }
-    #receipt-document .receipt-document-id { display: table-cell !important; width: 36%; text-align: right; }
-    #receipt-document .receipt-brand-table { display: table !important; width: 100% !important; }
-    #receipt-document .receipt-logo-cell { padding-right: 12px; vertical-align: top; width: 60px; }
-    #receipt-document .receipt-logo { height: 48px; opacity: .82; width: 48px; filter: grayscale(1); }
-    #receipt-document .receipt-brand-copy { vertical-align: top; }
-    #receipt-document .receipt-brand-copy strong,
-    #receipt-document .receipt-brand-copy span { display: block; }
-    #receipt-document .receipt-brand-copy strong { color: #181818; font-size: 15px; font-weight: 700; line-height: 1.25; }
-    #receipt-document .receipt-brand-copy span { color: #666; font-size: 10px; line-height: 1.45; margin-top: 3px; }
-    #receipt-document .receipt-document-label { color: #666; font-size: 8.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    #receipt-document .receipt-number { color: #181818; display: block; font-size: 15px; font-weight: 700; line-height: 1.25; margin-top: 5px; overflow-wrap: anywhere; }
-    #receipt-document .receipt-paid-status { color: #555; display: block; font-size: 8.5px; font-weight: 600; letter-spacing: .04em; margin-top: 7px; text-transform: uppercase; }
-
-    #receipt-document .receipt-meta { border-bottom: 1px solid #d7d7d7; border-top: 1px solid #d7d7d7; margin: 18px 0; }
-    #receipt-document .receipt-meta td { padding: 12px 16px; vertical-align: top; width: 25%; }
-    #receipt-document .receipt-meta td:first-child { padding-left: 0; }
-    #receipt-document .receipt-meta td + td { border-left: 1px solid #e2e2e2; }
-    #receipt-document .receipt-label { color: #777; display: block; font-size: 8px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
-    #receipt-document .receipt-value { color: #333; display: block; font-size: 11px; font-weight: 650; margin-top: 4px; }
-
-    #receipt-document .receipt-recipient { border-bottom: 1px solid #d7d7d7; margin-bottom: 20px; }
-    #receipt-document .receipt-recipient td { padding: 0 0 16px; vertical-align: top; width: 50%; }
-    #receipt-document .receipt-recipient td + td { border-left: 1px solid #e4e7ec; padding-left: 20px; }
-    #receipt-document .receipt-recipient .receipt-value { color: #181818; font-size: 12px; font-weight: 700; margin-top: 5px; }
-    #receipt-document .receipt-recipient small { color: #666; display: block; font-size: 9.5px; line-height: 1.45; margin-top: 3px; }
-
-    #receipt-document .receipt-section-heading { display: block !important; margin-bottom: 8px; width: 100%; }
-    #receipt-document .receipt-section-heading strong { color: #181818; font-size: 11.5px; font-weight: 700; }
-    #receipt-document .receipt-section-heading span { color: #4a4a4a; float: right; font-size: 8.5px; font-weight: 650; }
-    #receipt-document .receipt-table { border-bottom: 1px dashed #777 !important; border-top: 1px dashed #777 !important; display: table !important; min-width: 0 !important; table-layout: fixed; width: 100% !important; }
-    #receipt-document .receipt-table th { border-bottom: 1px dashed #777 !important; color: #555; font-size: 8.5px; font-weight: 700; height: 36px; letter-spacing: .02em; padding: 8px 10px; text-align: left; text-transform: uppercase; }
-    #receipt-document .receipt-table td { border-bottom: 1px dashed #b0b0b0 !important; color: #333; font-size: 10px; height: 44px; padding: 9px 10px; vertical-align: middle; }
-    #receipt-document .receipt-table tbody tr:last-child td { border-bottom: 0 !important; }
-    #receipt-document .receipt-table-number { text-align: center !important; width: 42px; }
-    #receipt-document .receipt-table-description { overflow-wrap: anywhere; width: auto; }
-    #receipt-document .receipt-table-description strong { font-weight: 600; }
-    #receipt-document .receipt-table-amount { text-align: right !important; white-space: nowrap; width: 126px; }
-
-    #receipt-document .receipt-totals-area { margin-top: 17px; }
-    #receipt-document .receipt-spelled { color: #4a4a4a; padding: 10px 18px 10px 0; vertical-align: top; width: 50%; }
-    #receipt-document .receipt-spelled strong { color: #333; display: block; font-size: 10px; font-weight: 600; line-height: 1.55; margin-top: 5px; }
-    #receipt-document .receipt-summary { border-left: 1px solid #d7d7d7; padding-left: 18px; vertical-align: top; width: 50%; }
-    #receipt-document .receipt-summary-row { color: #666; font-size: 9.5px; min-height: 27px; padding: 4px 0; }
-    #receipt-document .receipt-summary-row strong { color: #333; float: right; font-weight: 650; white-space: nowrap; }
-    #receipt-document .receipt-summary-row.is-total { border-top: 1px solid #d0d5dd; color: #181818; font-size: 10.5px; font-weight: 700; margin-top: 6px; padding-top: 10px; }
-    #receipt-document .receipt-summary-row.is-total strong { color: #181818; font-size: 14px; font-weight: 750; }
-    #receipt-document .receipt-note { border-bottom: 1px solid #d7d7d7; border-top: 1px solid #d7d7d7; color: #4a4a4a; font-size: 9.5px; line-height: 1.5; margin-top: 14px; padding: 10px 0; }
-    #receipt-document .receipt-note strong { color: #333; display: block; font-size: 9px; }
-
-    #receipt-document .receipt-signature-grid { border-top: 1px solid #e4e7ec; margin-top: 28px; }
-    #receipt-document .receipt-signature-grid td { padding-top: 22px; vertical-align: bottom; width: 50%; }
-    #receipt-document .receipt-validity strong { color: #333; display: block; font-size: 9.5px; font-weight: 700; }
-    #receipt-document .receipt-validity span { color: #777; display: block; font-size: 8.5px; line-height: 1.5; margin-top: 3px; }
-    #receipt-document .receipt-signature { color: #4a4a4a; font-size: 9.5px; text-align: center; }
-    #receipt-document .receipt-signature-line { border-top: 1px solid #666; color: #181818; display: inline-block; font-weight: 650; margin-top: 48px; padding-top: 7px; width: 190px; }
-    #receipt-document .receipt-document-footer { border-top: 1px dashed #d0d5dd; color: #777; font-size: 7.5px; line-height: 1.4; margin-top: 21px; padding-top: 10px; }
-    #receipt-document .receipt-document-footer span:last-child { float: right; }
-
-    @media print {
-        html, body {
-            background: #fff !important;
-            height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: auto !important;
-        }
-
-        .receipt-paper {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 182mm !important;
-        }
-
-        #receipt-document {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 182mm !important;
-        }
+    [data-receipt-document].receipt-document table th,
+    [data-receipt-document].receipt-document table td {
+        font-family: inherit !important;
+        line-height: 1.4 !important;
     }
+    [data-receipt-document].receipt-document .receipt-brand-copy strong { font-size: 11px !important; }
+    [data-receipt-document].receipt-document .receipt-brand-copy span { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-label { font-size: 8.5px !important; }
+    [data-receipt-document].receipt-document .receipt-number { font-size: 10.5px !important; }
+    [data-receipt-document].receipt-document .receipt-state { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-value { font-size: 9.5px !important; }
+    [data-receipt-document].receipt-document .receipt-recipient .receipt-value { font-size: 10px !important; }
+    [data-receipt-document].receipt-document .receipt-recipient small { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-section-heading strong { font-size: 9.5px !important; }
+    [data-receipt-document].receipt-document .receipt-section-heading span { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-items th { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-items td { font-size: 10px !important; }
+    [data-receipt-document].receipt-document .receipt-item-meta { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-spelled strong { font-size: 9.5px !important; }
+    [data-receipt-document].receipt-document .receipt-summary-row { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-summary-row.is-total,
+    [data-receipt-document].receipt-document .receipt-summary-row.is-total strong { font-size: 10px !important; }
+    [data-receipt-document].receipt-document .receipt-note { font-size: 9.5px !important; }
+    [data-receipt-document].receipt-document .receipt-validity strong,
+    [data-receipt-document].receipt-document .receipt-signature { font-size: 9.5px !important; }
+    [data-receipt-document].receipt-document .receipt-validity span { font-size: 9px !important; }
+    [data-receipt-document].receipt-document .receipt-signature-line { font-size: 10px !important; }
+    [data-receipt-document].receipt-document .receipt-footer { font-size: 8.5px !important; }
+
 </style>
 
-<div id="receipt-document">
-    <table class="receipt-document-header">
-        <tr>
-            <td class="receipt-brand">
-                <table class="receipt-brand-table"><tr>
-                    @if($logoData)<td class="receipt-logo-cell"><img class="receipt-logo" src="{{ $logoData }}" alt="Logo Permata Insani"></td>@endif
-                    <td class="receipt-brand-copy">
-                        <strong>Yayasan Kemilau Permata Insani</strong>
-                        <span>{{ $school?->nama_sekolah ?? 'Permata Insani Islamic School' }}</span>
-                        <span>{{ $school?->alamat ?? 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi, Jambi' }}</span>
-                    </td>
-                </tr></table>
-            </td>
-            <td class="receipt-document-id">
-                <span class="receipt-document-label">{{ $isGrouped ? 'Kwitansi gabungan' : 'Kwitansi pembayaran' }}</span>
-                <strong class="receipt-number">{{ $receipt['number'] }}</strong>
-                <span class="receipt-paid-status">Pembayaran diterima</span>
-            </td>
-        </tr>
-    </table>
+<article class="receipt-document {{ ($clientPdfFallback ?? false) ? 'is-client-pdf-export' : '' }}" data-receipt-document>
+    <table class="receipt-document-header"><tr>
+        <td class="receipt-brand-cell">
+            <table class="receipt-brand-table"><tr>
+                @if($logoData)<td class="receipt-logo-cell"><img class="receipt-logo" src="{{ $logoData }}" alt="Logo Permata Insani"></td>@endif
+                <td class="receipt-brand-copy">
+                    <strong>Yayasan Kemilau Permata Insani</strong>
+                    <span>{{ $school?->nama_sekolah ?? 'Permata Insani Islamic School' }}</span>
+                    <span>{{ $school?->alamat ?? 'Jl. Abdul Muis No. 27, Kel. Lingkar Selatan, Kec. Paal Merah, Kota Jambi' }}</span>
+                </td>
+            </tr></table>
+        </td>
+        <td class="receipt-id-cell">
+            <span class="receipt-label">{{ $documentLabel }}</span>
+            <strong class="receipt-number">{{ $receipt['number'] ?? '-' }}</strong>
+            <span class="receipt-state">Pembayaran diterima</span>
+        </td>
+    </tr></table>
 
     <table class="receipt-meta"><tr>
-        <td><span class="receipt-label">Tanggal pembayaran</span><strong class="receipt-value">{{ $paidAt->translatedFormat('d F Y') }}</strong></td>
-        <td><span class="receipt-label">Tanggal kuitansi</span><strong class="receipt-value">{{ $receiptAt->translatedFormat('d F Y') }}</strong></td>
-        <td><span class="receipt-label">Metode pembayaran</span><strong class="receipt-value">{{ $receipt['method'] }}</strong></td>
-        <td><span class="receipt-label">Jumlah item</span><strong class="receipt-value">{{ $items->count() }} tagihan</strong></td>
+        <td><span class="receipt-label">Tanggal transaksi</span><strong class="receipt-value">{{ $paidAt->locale('id')->translatedFormat('d F Y') }}</strong></td>
+        <td><span class="receipt-label">Tanggal kuitansi</span><strong class="receipt-value">{{ $receiptAt->locale('id')->translatedFormat('d F Y') }}</strong></td>
+        <td><span class="receipt-label">Metode</span><strong class="receipt-value">{{ $receipt['method'] ?? '-' }}</strong></td>
+        <td><span class="receipt-label">Jumlah item</span><strong class="receipt-value">{{ $items->count() }} {{ $itemNoun }}</strong></td>
     </tr></table>
 
     <table class="receipt-recipient"><tr>
@@ -169,22 +161,26 @@
     </tr></table>
 
     <div class="receipt-section-heading"><strong>Rincian transaksi</strong><span>{{ $items->count() }} item</span></div>
-    <table class="receipt-table">
-        <thead><tr><th class="receipt-table-number">No.</th><th class="receipt-table-description">Rincian pembayaran</th><th class="receipt-table-amount">Nilai transaksi</th><th class="receipt-table-amount">Potongan</th><th class="receipt-table-amount">Diterima</th></tr></thead>
+    <table class="receipt-items">
+        <thead><tr><th class="receipt-col-number">No.</th><th class="receipt-col-description">Rincian pembayaran</th><th class="receipt-col-money">Nilai</th><th class="receipt-col-money">Potongan</th><th class="receipt-col-money">Diterima</th></tr></thead>
         <tbody>
             @foreach($items as $item)
+                @php
+                    $itemAmount = (float) ($item['amount'] ?? 0);
+                    $itemDiscount = (float) ($item['discount'] ?? 0);
+                @endphp
                 <tr>
-                    <td class="receipt-table-number">{{ $loop->iteration }}</td>
-                    <td class="receipt-table-description"><strong>{{ $item['name'] }}</strong></td>
-                    <td class="receipt-table-amount">{{ $formatRupiah($item['amount'] + $item['discount']) }}</td>
-                    <td class="receipt-table-amount">{{ $item['discount'] > 0 ? '- ' . $formatRupiah($item['discount']) : '—' }}</td>
-                    <td class="receipt-table-amount"><strong>{{ $formatRupiah($item['amount']) }}</strong></td>
+                    <td class="receipt-col-number">{{ $loop->iteration }}</td>
+                    <td class="receipt-col-description"><strong>{{ $item['name'] ?? '-' }}</strong>@if(!empty($item['meta']))<span class="receipt-item-meta">{{ $item['meta'] }}</span>@endif</td>
+                    <td class="receipt-col-money">{{ $formatRupiah($itemAmount + $itemDiscount) }}</td>
+                    <td class="receipt-col-money">{{ $itemDiscount > 0 ? '- ' . $formatRupiah($itemDiscount) : '—' }}</td>
+                    <td class="receipt-col-money"><strong>{{ $formatRupiah($itemAmount) }}</strong></td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    <table class="receipt-totals-area"><tr>
+    <table class="receipt-totals"><tr>
         <td class="receipt-spelled"><span class="receipt-label">Terbilang</span><strong>{{ $spelledAmount }}</strong></td>
         <td class="receipt-summary">
             <div class="receipt-summary-row">Nilai transaksi <strong>{{ $formatRupiah($transactionTotal) }}</strong></div>
@@ -195,10 +191,10 @@
 
     @if($showNote)<div class="receipt-note"><strong>Keterangan</strong>{{ $rawNote }}</div>@endif
 
-    <table class="receipt-signature-grid"><tr>
-        <td class="receipt-validity"><strong>Bukti pembayaran resmi</strong><span>Kwitansi ini dibuat oleh Sistem Pembayaran Permata Insani dan sah tanpa stempel tambahan.</span></td>
-        <td class="receipt-signature">Jambi, {{ $receiptAt->translatedFormat('d F Y') }}<br><span class="receipt-signature-line">Petugas administrasi</span></td>
+    <table class="receipt-signatures"><tr>
+        <td class="receipt-validity"><strong>Bukti pembayaran resmi</strong><span>Kwitansi ini dibuat oleh {{ $systemLabel }} dan sah tanpa stempel tambahan.</span></td>
+        <td class="receipt-signature">Jambi, {{ $receiptAt->locale('id')->translatedFormat('d F Y') }}<br><span class="receipt-signature-line">Petugas administrasi</span></td>
     </tr></table>
 
-    <div class="receipt-document-footer"><span>Dokumen dicetak melalui Sistem Pembayaran Permata Insani.</span><span>No. {{ $receipt['number'] }}</span></div>
-</div>
+    <div class="receipt-footer"><span>Dicetak melalui {{ $systemLabel }}.</span><span>No. {{ $receipt['number'] ?? '-' }}</span></div>
+</article>

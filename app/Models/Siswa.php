@@ -94,7 +94,9 @@ class Siswa extends Authenticatable
     
     public function tagihanAktif()
     {
-        return $this->hasMany(Tagihan::class, 'siswa_id')->where('status', 'belum');
+        return $this->hasMany(Tagihan::class, 'siswa_id')
+            ->where('status', 'belum')
+            ->where('is_active', true);
     }
 
     // ✅ Relasi ke tabel tagihan

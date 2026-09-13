@@ -14,8 +14,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ asset('css/table-sort.css') }}?v=20260804-5" rel="stylesheet">
     @stack('page-styles')
-    <link href="{{ asset('css/permata-system.css') }}?v=20260813-4" rel="stylesheet">
-    <link href="{{ asset('css/filter-groups.css') }}?v=20260813-2" rel="stylesheet">
+    <link href="{{ asset('css/permata-system.css') }}?v=20260913-11" rel="stylesheet">
+    <link href="{{ asset('css/filter-groups.css') }}?v=20260913-1" rel="stylesheet">
     <script src="{{ asset('js/table-sort.js') }}?v=20260804-5" defer></script>
 </head>
 <body
@@ -31,9 +31,11 @@
         {{ $slot ?? '' }}
     </main>
 
-    <script src="{{ asset('js/permata-system.js') }}?v=20260804-1"></script>
+    @include('partials.confirm-dialog')
+
+    <script src="{{ asset('js/permata-system.js') }}?v=20260913-3"></script>
     <script src="{{ asset('js/preserve-list-position.js') }}?v=20260813-1"></script>
-    <script src="{{ asset('js/filter-groups.js') }}?v=20260813-2"></script>
+    <script src="{{ asset('js/filter-groups.js') }}?v=20260913-3"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

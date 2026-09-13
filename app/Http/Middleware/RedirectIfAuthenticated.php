@@ -26,7 +26,16 @@ class RedirectIfAuthenticated
                     return redirect()->route('siswa.dashboard');
                 }
 
-                // Jika guard yang login adalah admin (web)
+                // Admin kembali ke ruang kerja tagihan sebagai halaman utama.
+                $admin = Auth::guard('web')->user();
+                if ($admin?->hasAnyPermission(['tagihan.manage', 'pembayaran.process'])) {
+                    return redirect()->route('tagihan.index.grouped');
+                }
+
+                if ($admin?->hasPermission('riwayat.view')) {
+                    return redirect()->route('riwayat.index');
+                }
+
                 return redirect(RouteServiceProvider::HOME);
             }
         }

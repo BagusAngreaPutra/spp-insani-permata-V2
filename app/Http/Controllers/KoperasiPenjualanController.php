@@ -10,6 +10,7 @@ use App\Models\Siswa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class KoperasiPenjualanController extends Controller
@@ -182,7 +183,48 @@ class KoperasiPenjualanController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
 
-        return view('koperasi.penjualan.kwitansi', compact('penjualan'));
+        return view('tagihan.kwitansi.receipt', [
+            'receipt' => $this->receiptForSale($penjualan),
+        ]);
+    }
+
+    public function unduhKwitansiPdf(Request $request, $id)
+    {
+        $penjualan = KoperasiPenjualan::with(['sekolah', 'siswa.kelas', 'details.barang'])->findOrFail($id);
+        $receipt = $this->receiptForSale($penjualan);
+        $safeNumber = Str::of((string) $receipt['number'])
+            ->replace(['/', '\\'], '-')
+            ->replaceMatches('/[^A-Za-z0-9._-]/', '-')
+            ->trim('-')
+            ->value();
+        $filename = 'kwitansi-koperasi-' . ($safeNumber ?: $penjualan->id) . '.pdf';
+
+        if (! class_exists(\Barryvdh\DomPDF\PDF::class) || ! app()->bound('dompdf.wrapper')) {
+            return view('tagihan.kwitansi.receipt', [
+                'receipt' => $receipt,
+                'clientPdfFallback' => ! $request->boolean('preview'),
+                'clientPrintFallback' => $request->boolean('preview'),
+            ]);
+        }
+
+        try {
+            $pdf = app('dompdf.wrapper')
+                ->loadView('tagihan.kwitansi.pdf', compact('receipt'))
+                ->setPaper('a5', 'portrait')
+                ->setOption('isRemoteEnabled', false);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return view('tagihan.kwitansi.receipt', [
+                'receipt' => $receipt,
+                'clientPdfFallback' => ! $request->boolean('preview'),
+                'clientPrintFallback' => $request->boolean('preview'),
+            ]);
+        }
+
+        return $request->boolean('preview')
+            ? $pdf->stream($filename)
+            : $pdf->download($filename);
     }
 
     public function destroy(Request $request, $id)
@@ -219,5 +261,31 @@ class KoperasiPenjualanController extends Controller
             ->value('nomor');
 
         return $prefix . str_pad(((int) $lastNumber) + 1, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function receiptForSale(KoperasiPenjualan $penjualan): array
+    {
+        return [
+            'student' => $penjualan->siswa,
+            'school' => $penjualan->sekolah,
+            'document_label' => 'Kwitansi koperasi',
+            'number' => $penjualan->kode_transaksi,
+            'payment_date' => $penjualan->tanggal,
+            'receipt_date' => $penjualan->tanggal,
+            'method' => 'Koperasi',
+            'note' => $penjualan->catatan,
+            'items' => $penjualan->details->map(fn ($detail) => [
+                'name' => $detail->nama_barang,
+                'meta' => $detail->jumlah . ' × Rp' . number_format((float) $detail->harga_satuan, 0, ',', '.'),
+                'amount' => (float) $detail->subtotal,
+                'discount' => 0,
+            ])->all(),
+            'item_noun' => 'barang',
+            'total_paid' => (float) $penjualan->total,
+            'total_discount' => 0,
+            'system_label' => 'Sistem Koperasi Permata Insani',
+            'pdf_url' => route('koperasi.penjualan.kwitansi.pdf', $penjualan->id),
+            'back_url' => route('koperasi.penjualan.show', $penjualan->id),
+        ];
     }
 }

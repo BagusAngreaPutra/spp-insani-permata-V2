@@ -2,21 +2,26 @@
 
 @php
     $adminUser = Auth::guard('web')->user();
-    $canMaster = $adminUser?->hasAnyPermission(['sekolah.manage', 'tahun_ajaran.manage', 'kelas.manage', 'siswa.manage', 'admin.manage']) ?? false;
+    $canMaster = $adminUser?->hasAnyPermission(['sekolah.manage', 'tahun_ajaran.manage', 'kelas.manage', 'siswa.manage', 'admin.manage', 'jenis_pembayaran.manage']) ?? false;
     $canTagihan = $adminUser?->hasAnyPermission(['tagihan.manage', 'pembayaran.process']) ?? false;
-    $canPembayaran = $adminUser?->hasAnyPermission(['jenis_pembayaran.manage', 'koperasi.barang.manage', 'koperasi.stok.manage', 'koperasi.penjualan.manage', 'riwayat.view']) ?? false;
+    $canJenisTagihan = $adminUser?->hasPermission('jenis_pembayaran.manage') ?? false;
+    $canRiwayat = $adminUser?->hasPermission('riwayat.view') ?? false;
+    $canKoperasi = $adminUser?->hasAnyPermission(['koperasi.barang.manage', 'koperasi.stok.manage', 'koperasi.penjualan.manage']) ?? false;
+    $canPemasukan = $canTagihan || $canKoperasi || ($adminUser?->hasPermission('pemasukan.manage') ?? false);
     $canKenaikan = $adminUser?->hasAnyPermission(['kenaikan.manage', 'kelulusan.manage']) ?? false;
-    $canKeuangan = $adminUser?->hasAnyPermission(['pemasukan.manage', 'pengeluaran.manage', 'keuangan_kas.view']) ?? false;
-    $canTools = $adminUser?->hasAnyPermission(['log.view', 'import_excel.manage', 'export_excel.manage', 'backup.manage']) ?? false;
+    $canTools = $adminUser?->hasAnyPermission(['tagihan.manage', 'log.view', 'import_excel.manage', 'export_excel.manage', 'backup.manage']) ?? false;
     $canLaporan = $adminUser?->hasPermission('laporan.view') ?? false;
     $adminInitial = strtoupper(substr($adminUser?->nama_admin ?? 'G', 0, 1));
+    $adminHomeUrl = $canTagihan
+        ? route('tagihan.index.grouped')
+        : ($canRiwayat ? route('riwayat.index') : route('dashboard'));
 @endphp
 
 <div class="sidebar-overlay-bg" id="sidebarOverlayBg" onclick="toggleSidebarMenu()"></div>
 
 <aside class="app-sidebar" id="appSidebar">
     <div class="app-sidebar-head">
-        <a class="app-brand" href="{{ route('dashboard') }}">
+        <a class="app-brand" href="{{ $adminHomeUrl }}">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo Permata Insani">
             <span>
                 <strong>Permata Insani</strong>
@@ -35,18 +40,25 @@
         <section class="app-nav-section" data-nav-section>
             <p class="app-nav-label">Menu utama</p>
             <nav class="app-nav" aria-label="Menu utama">
-                <a href="{{ route('dashboard') }}" class="app-nav-link {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" data-nav-item>
-                    <i class="fas fa-chart-pie"></i><span>Ringkasan</span>
-                </a>
-
-                @if($canTagihan)
-                    <a href="{{ route('tagihan.index.grouped') }}" class="app-nav-link {{ request()->routeIs('tagihan.*') ? 'is-active' : '' }}" data-nav-item>
-                        <i class="fas fa-receipt"></i><span>Tagihan</span>
-                    </a>
+                @if($canPemasukan)
+                    <details class="app-nav-group" {{ request()->routeIs('tagihan.*', 'koperasi.*', 'pemasukan.*') ? 'open' : '' }} data-nav-item>
+                        <summary><i class="fas fa-arrow-trend-up"></i><span>Pemasukan</span><i class="fas fa-chevron-down"></i></summary>
+                        <div>
+                            @if($canTagihan)
+                                <a href="{{ route('tagihan.index.grouped') }}" class="{{ request()->routeIs('tagihan.*') ? 'is-active' : '' }}"><i class="fas fa-receipt"></i><span>Tagihan Siswa</span></a>
+                            @endif
+                            @if($canKoperasi)
+                                <a href="{{ $adminUser->hasPermission('koperasi.penjualan.manage') ? route('koperasi.penjualan.index') : route('koperasi.index') }}" class="{{ request()->routeIs('koperasi.*') ? 'is-active' : '' }}"><i class="fas fa-store"></i><span>Koperasi</span></a>
+                            @endif
+                            @if($adminUser->hasPermission('pemasukan.manage'))
+                                <a href="{{ route('pemasukan.index') }}" class="{{ request()->routeIs('pemasukan.*') ? 'is-active' : '' }}"><i class="fas fa-coins"></i><span>Pemasukan Lainnya</span></a>
+                            @endif
+                        </div>
+                    </details>
                 @endif
 
                 @if($canMaster)
-                    <details class="app-nav-group" {{ request()->routeIs('sekolah.*', 'tahun_ajaran.*', 'kelas.*', 'siswa.*', 'admin.*') ? 'open' : '' }} data-nav-item>
+                    <details class="app-nav-group" {{ request()->routeIs('sekolah.*', 'tahun_ajaran.*', 'kelas.*', 'siswa.*', 'admin.*', 'jenis_pembayaran.*') ? 'open' : '' }} data-nav-item>
                         <summary><i class="fas fa-building-columns"></i><span>Data sekolah</span><i class="fas fa-chevron-down"></i></summary>
                         <div>
                             @if($adminUser->hasAnyPermission(['sekolah.manage', 'kelas.manage']))
@@ -61,45 +73,17 @@
                             @if($adminUser->hasPermission('admin.manage'))
                                 <a href="{{ route('admin.index') }}" class="{{ request()->routeIs('admin.*') ? 'is-active' : '' }}"><i class="fas fa-user-tie"></i><span>Guru & admin</span></a>
                             @endif
-                        </div>
-                    </details>
-                @endif
-
-                @if($canPembayaran)
-                    <details class="app-nav-group" {{ request()->routeIs('jenis_pembayaran.*', 'koperasi.*', 'riwayat.*') ? 'open' : '' }} data-nav-item>
-                        <summary><i class="fas fa-arrow-right-arrow-left"></i><span>Transaksi</span><i class="fas fa-chevron-down"></i></summary>
-                        <div>
-                            @if($adminUser->hasPermission('jenis_pembayaran.manage'))
+                            @if($canJenisTagihan)
                                 <a href="{{ route('jenis_pembayaran.index') }}" class="{{ request()->routeIs('jenis_pembayaran.*') ? 'is-active' : '' }}"><i class="fas fa-tags"></i><span>Jenis pembayaran</span></a>
                             @endif
-                            @if($adminUser->hasAnyPermission(['koperasi.barang.manage', 'koperasi.stok.manage']))
-                                <a href="{{ route('koperasi.index') }}" class="{{ request()->routeIs('koperasi.index', 'koperasi.create', 'koperasi.edit', 'koperasi.stok.*') ? 'is-active' : '' }}"><i class="fas fa-box"></i><span>Barang koperasi</span></a>
-                            @endif
-                            @if($adminUser->hasPermission('koperasi.penjualan.manage'))
-                                <a href="{{ route('koperasi.penjualan.index') }}" class="{{ request()->routeIs('koperasi.penjualan.*') ? 'is-active' : '' }}"><i class="fas fa-cart-shopping"></i><span>Penjualan koperasi</span></a>
-                            @endif
-                            @if($adminUser->hasPermission('riwayat.view'))
-                                <a href="{{ route('riwayat.index') }}" class="{{ request()->routeIs('riwayat.*') ? 'is-active' : '' }}"><i class="fas fa-clock-rotate-left"></i><span>Riwayat pembayaran</span></a>
-                            @endif
                         </div>
                     </details>
                 @endif
 
-                @if($canKeuangan)
-                    <details class="app-nav-group" {{ request()->routeIs('pemasukan.*', 'pengeluaran.*', 'keuangan.kas.*') ? 'open' : '' }} data-nav-item>
-                        <summary><i class="fas fa-chart-line"></i><span>Keuangan</span><i class="fas fa-chevron-down"></i></summary>
-                        <div>
-                            @if($adminUser->hasPermission('pemasukan.manage'))
-                                <a href="{{ route('pemasukan.index') }}" class="{{ request()->routeIs('pemasukan.*') ? 'is-active' : '' }}"><i class="fas fa-arrow-trend-up"></i><span>Pemasukan</span></a>
-                            @endif
-                            @if($adminUser->hasPermission('pengeluaran.manage'))
-                                <a href="{{ route('pengeluaran.index') }}" class="{{ request()->routeIs('pengeluaran.*') ? 'is-active' : '' }}"><i class="fas fa-arrow-trend-down"></i><span>Pengeluaran</span></a>
-                            @endif
-                            @if($adminUser->hasPermission('keuangan_kas.view'))
-                                <a href="{{ route('keuangan.kas.index') }}" class="{{ request()->routeIs('keuangan.kas.*') ? 'is-active' : '' }}"><i class="fas fa-wallet"></i><span>Saldo kas</span></a>
-                            @endif
-                        </div>
-                    </details>
+                @if($canRiwayat)
+                    <a href="{{ route('riwayat.index') }}" class="app-nav-link {{ request()->routeIs('riwayat.*') ? 'is-active' : '' }}" data-nav-item>
+                        <i class="fas fa-clock-rotate-left"></i><span>Riwayat Transaksi</span>
+                    </a>
                 @endif
 
                 @if($canKenaikan)
@@ -123,36 +107,12 @@
                 <p class="app-nav-label">Laporan</p>
                 <nav class="app-nav" aria-label="Laporan">
                     <details class="app-nav-group app-report-group" {{ request()->routeIs('laporan.*') ? 'open' : '' }} data-nav-item>
-                        <summary><i class="fas fa-chart-column"></i><span>Pusat laporan</span><i class="fas fa-chevron-down"></i></summary>
+                        <summary><i class="fas fa-chart-column"></i><span>Laporan Transaksi</span><i class="fas fa-chevron-down"></i></summary>
                         <div class="app-report-panel">
-                            <details class="app-nav-subgroup" {{ request()->routeIs('laporan.pembayaran*', 'laporan.pemasukan*', 'laporan.pengeluaran*', 'laporan.koperasi*') ? 'open' : '' }}>
-                                <summary><span>Keuangan</span><i class="fas fa-chevron-down"></i></summary>
-                                <div>
-                                    <a href="{{ route('laporan.pembayaran') }}" class="{{ request()->routeIs('laporan.pembayaran*') ? 'is-active' : '' }}"><i class="fas fa-file-invoice-dollar"></i><span>Pembayaran</span></a>
-                                    <a href="{{ route('laporan.pemasukan') }}" class="{{ request()->routeIs('laporan.pemasukan*') ? 'is-active' : '' }}"><i class="fas fa-arrow-trend-up"></i><span>Pemasukan</span></a>
-                                    <a href="{{ route('laporan.pengeluaran') }}" class="{{ request()->routeIs('laporan.pengeluaran*') ? 'is-active' : '' }}"><i class="fas fa-arrow-trend-down"></i><span>Pengeluaran</span></a>
-                                    <a href="{{ route('laporan.koperasi') }}" class="{{ request()->routeIs('laporan.koperasi*') ? 'is-active' : '' }}"><i class="fas fa-store"></i><span>Koperasi</span></a>
-                                </div>
-                            </details>
-
-                            <details class="app-nav-subgroup" {{ request()->routeIs('laporan.siswa*', 'laporan.kelas*', 'laporan.sekolah*', 'laporan.tahun_ajaran*') ? 'open' : '' }}>
-                                <summary><span>Data sekolah</span><i class="fas fa-chevron-down"></i></summary>
-                                <div>
-                                    <a href="{{ route('laporan.siswa') }}" class="{{ request()->routeIs('laporan.siswa*') ? 'is-active' : '' }}"><i class="fas fa-user-graduate"></i><span>Siswa</span></a>
-                                    <a href="{{ route('laporan.sekolah') }}" class="{{ request()->routeIs('laporan.sekolah*', 'laporan.kelas*') ? 'is-active' : '' }}"><i class="fas fa-school-flag"></i><span>Sekolah & kelas</span></a>
-                                    <a href="{{ route('laporan.tahun_ajaran') }}" class="{{ request()->routeIs('laporan.tahun_ajaran*') ? 'is-active' : '' }}"><i class="fas fa-calendar-days"></i><span>Tahun ajaran</span></a>
-                                </div>
-                            </details>
-
-                            <details class="app-nav-subgroup" {{ request()->routeIs('laporan.jenis_pembayaran*', 'laporan.kenaikan*', 'laporan.kelulusan*', 'laporan.admin*') ? 'open' : '' }}>
-                                <summary><span>Akademik & sistem</span><i class="fas fa-chevron-down"></i></summary>
-                                <div>
-                                    <a href="{{ route('laporan.jenis_pembayaran') }}" class="{{ request()->routeIs('laporan.jenis_pembayaran*') ? 'is-active' : '' }}"><i class="fas fa-tags"></i><span>Jenis pembayaran</span></a>
-                                    <a href="{{ route('laporan.kenaikan') }}" class="{{ request()->routeIs('laporan.kenaikan*') ? 'is-active' : '' }}"><i class="fas fa-arrow-up-right-dots"></i><span>Kenaikan kelas</span></a>
-                                    <a href="{{ route('laporan.kelulusan') }}" class="{{ request()->routeIs('laporan.kelulusan*') ? 'is-active' : '' }}"><i class="fas fa-medal"></i><span>Kelulusan</span></a>
-                                    <a href="{{ route('laporan.admin') }}" class="{{ request()->routeIs('laporan.admin*') ? 'is-active' : '' }}"><i class="fas fa-user-tie"></i><span>Guru & admin</span></a>
-                                </div>
-                            </details>
+                            <a href="{{ route('laporan.transaksi') }}" class="{{ request()->routeIs('laporan.transaksi*') ? 'is-active' : '' }}"><i class="fas fa-chart-line"></i><span>Semua Transaksi</span></a>
+                            <a href="{{ route('laporan.tagihan_siswa') }}" class="{{ request()->routeIs('laporan.tagihan_siswa*') ? 'is-active' : '' }}"><i class="fas fa-file-invoice-dollar"></i><span>Tagihan Siswa</span></a>
+                            <a href="{{ route('laporan.koperasi') }}" class="{{ request()->routeIs('laporan.koperasi*') ? 'is-active' : '' }}"><i class="fas fa-store"></i><span>Koperasi</span></a>
+                            <a href="{{ route('laporan.pemasukan') }}" class="{{ request()->routeIs('laporan.pemasukan*') ? 'is-active' : '' }}"><i class="fas fa-coins"></i><span>Pemasukan Lainnya</span></a>
                         </div>
                     </details>
                 </nav>
@@ -163,9 +123,12 @@
             <section class="app-nav-section" data-nav-section>
                 <p class="app-nav-label">Sistem</p>
                 <nav class="app-nav" aria-label="Sistem">
-                    <details class="app-nav-group" {{ request()->routeIs('log_aktivitas.*', 'import.*', 'export_excel.*', 'backup.*') ? 'open' : '' }} data-nav-item>
+                    <details class="app-nav-group" {{ request()->routeIs('pengaturan.*', 'log_aktivitas.*', 'import.*', 'export_excel.*', 'backup.*') ? 'open' : '' }} data-nav-item>
                         <summary><i class="fas fa-sliders"></i><span>Pengaturan data</span><i class="fas fa-chevron-down"></i></summary>
                         <div>
+                            @if($adminUser->hasPermission('tagihan.manage'))
+                                <a href="{{ route('pengaturan.diskon-spp.edit') }}" class="{{ request()->routeIs('pengaturan.diskon-spp.*') ? 'is-active' : '' }}"><i class="fas fa-percent"></i><span>Diskon SPP</span></a>
+                            @endif
                             @if($adminUser->hasPermission('log.view'))
                                 <a href="{{ route('log_aktivitas.index') }}" class="{{ request()->routeIs('log_aktivitas.*') ? 'is-active' : '' }}"><i class="fas fa-clock-rotate-left"></i><span>Aktivitas</span></a>
                             @endif

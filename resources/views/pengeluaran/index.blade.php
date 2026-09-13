@@ -184,7 +184,7 @@
                             <td>{{ $item->sekolah->nama_sekolah ?? '-' }}</td>
                             <td class="flex gap-2">
                                 <a href="{{ route('pengeluaran.edit', $item->id) }}" class="btn-edit">Edit</a>
-                                <form action="{{ route('pengeluaran.destroy', $item->id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Hapus data ini?')">
+                                <form action="{{ route('pengeluaran.destroy', $item->id) }}" method="POST" style="display:inline;" data-confirm-title="Hapus pengeluaran" data-confirm-message="Data pengeluaran ini akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn-delete">Hapus</button>

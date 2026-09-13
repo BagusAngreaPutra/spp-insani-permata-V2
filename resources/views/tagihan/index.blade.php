@@ -579,7 +579,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn-action btn-hapus"
-                                                    onclick="return confirm('Yakin ingin menghapus tagihan ini?')">
+                                                    data-confirm-title="Hapus tagihan" data-confirm-message="Tagihan ini akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger">
                                                 <i class="fas fa-trash"></i> Hapus
                                             </button>
                                         </form>

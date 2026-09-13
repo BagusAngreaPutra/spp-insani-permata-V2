@@ -543,7 +543,7 @@
                                     <form
                                         action="{{ route('koperasi.destroy', $item->id) }}"
                                         method="POST"
-                                        onsubmit="return confirm('Hapus barang ini?')"
+                                        data-confirm-title="Hapus barang koperasi" data-confirm-message="Barang {{ $item->nama_barang }} akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger"
                                     >
                                         @csrf
                                         @method('DELETE')

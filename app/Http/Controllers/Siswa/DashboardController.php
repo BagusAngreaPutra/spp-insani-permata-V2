@@ -21,6 +21,7 @@ class DashboardController extends Controller
         // tetap tersedia dari filter pada halaman Tagihan Saya.
         $activeBills = Tagihan::query()
             ->where('siswa_id', $siswa->id)
+            ->active()
             ->when($activeAcademicYearId, fn ($query) => $query->where('tahun_ajaran_id', $activeAcademicYearId));
         $totalTagihan = (clone $activeBills)->sum('nominal');
 

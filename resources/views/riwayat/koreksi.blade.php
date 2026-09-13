@@ -259,7 +259,7 @@
 
                     <div class="correction-warning">
                         <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-                        <span>Koreksi tidak menghapus transaksi. Diskon pelunasan SPP maksimal Rp25.000 otomatis diterapkan jika tanggal pembayaran tidak melewati jatuh tempo, lalu status tagihan dan kuitansi dihitung ulang.</span>
+                        <span>Koreksi tidak menghapus transaksi. Diskon pelunasan SPP {{ $sppDiscountConfig['active'] ? 'sebesar Rp' . number_format($sppDiscountConfig['amount'], 0, ',', '.') : 'sedang nonaktif' }} dan akan dihitung ulang mengikuti periode yang berlaku, lalu status tagihan dan kuitansi diperbarui.</span>
                     </div>
 
                     <div class="correction-form-actions">

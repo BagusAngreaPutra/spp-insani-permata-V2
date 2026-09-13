@@ -2,13 +2,52 @@
 
 namespace App\Services;
 
+use App\Models\SppDiscountSetting;
 use App\Models\Tagihan;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class SppDiscountCalculator
 {
     public const MAX_DISCOUNT = 25000;
+
+    public function configuration(): array
+    {
+        $default = [
+            'amount' => (float) self::MAX_DISCOUNT,
+            'valid_from' => null,
+            'valid_until' => null,
+            'active' => true,
+            'custom_period' => false,
+        ];
+
+        try {
+            if (! Schema::hasTable('spp_discount_settings')) {
+                return $default;
+            }
+
+            $setting = SppDiscountSetting::query()->first();
+
+            if (! $setting) {
+                return $default;
+            }
+
+            $validFrom = $setting->berlaku_mulai?->toDateString();
+            $validUntil = $setting->berlaku_sampai?->toDateString();
+
+            return [
+                'amount' => (float) $setting->nominal,
+                'valid_from' => $validFrom,
+                'valid_until' => $validUntil,
+                'active' => (bool) $setting->aktif,
+                'custom_period' => $validFrom !== null && $validUntil !== null,
+            ];
+        } catch (Throwable) {
+            return $default;
+        }
+    }
 
     public function isSpp(Tagihan $bill): bool
     {
@@ -27,17 +66,33 @@ class SppDiscountCalculator
             return 0;
         }
 
-        $deadline = $this->discountDeadline($bill);
+        $configuration = $this->configuration();
+
+        if (! $configuration['active'] || $configuration['amount'] <= 0) {
+            return 0;
+        }
+
         $paidAt = $paymentDate instanceof CarbonInterface
             ? Carbon::instance($paymentDate)->startOfDay()
             : Carbon::parse($paymentDate)->startOfDay();
 
-        if (! $deadline || $paidAt->greaterThan($deadline)) {
-            return 0;
+        if ($configuration['custom_period']) {
+            $validFrom = Carbon::parse($configuration['valid_from'])->startOfDay();
+            $validUntil = Carbon::parse($configuration['valid_until'])->startOfDay();
+
+            if ($paidAt->lessThan($validFrom) || $paidAt->greaterThan($validUntil)) {
+                return 0;
+            }
+        } else {
+            $deadline = $this->discountDeadline($bill);
+
+            if (! $deadline || $paidAt->greaterThan($deadline)) {
+                return 0;
+            }
         }
 
         $remaining = max(0, (float) $bill->nominal - $existingCoverage);
-        $discount = min((float) self::MAX_DISCOUNT, $remaining);
+        $discount = min((float) $configuration['amount'], $remaining);
 
         return abs(($cashAmount + $discount) - $remaining) <= 0.01
             ? $discount

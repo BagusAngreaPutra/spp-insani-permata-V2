@@ -45,7 +45,15 @@ class AdminAuthController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            return redirect()->route('dashboard'); // route dashboard admin
+            if ($admin->hasAnyPermission(['tagihan.manage', 'pembayaran.process'])) {
+                return redirect()->route('tagihan.index.grouped');
+            }
+
+            if ($admin->hasPermission('riwayat.view')) {
+                return redirect()->route('riwayat.index');
+            }
+
+            return redirect()->route('dashboard');
         }
 
         return back()->withErrors([

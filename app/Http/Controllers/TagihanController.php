@@ -12,6 +12,7 @@ use App\Models\Kelas;
 use App\Models\TahunAjaran;
 use Illuminate\Support\Facades\Auth;
 use App\Services\TagihanPeriodReconciler;
+use App\Services\SppDiscountCalculator;
 
 class TagihanController extends Controller
 {
@@ -281,6 +282,43 @@ class TagihanController extends Controller
         ]);
 
         return redirect()->route('tagihan.index')->with('success','Tagihan berhasil dihapus!');
+    }
+
+    public function toggleActive(Request $request, Tagihan $tagihan)
+    {
+        $result = \DB::transaction(function () use ($request, $tagihan): array {
+            $lockedBill = Tagihan::query()
+                ->with('siswa:id,nama')
+                ->lockForUpdate()
+                ->findOrFail($tagihan->id);
+
+            if ($lockedBill->is_active && $lockedBill->pembayaran()->exists()) {
+                return [
+                    'type' => 'error',
+                    'message' => 'Tagihan yang sudah memiliki pembayaran tidak dapat dinonaktifkan.',
+                ];
+            }
+
+            $lockedBill->is_active = ! $lockedBill->is_active;
+            $lockedBill->save();
+
+            $stateLabel = $lockedBill->is_active ? 'AKTIF' : 'TIDAK AKTIF';
+
+            LogAktivitas::create([
+                'aktor_type' => 'admin',
+                'aktor_id' => Auth::guard('web')->id(),
+                'aktivitas' => "Mengubah tagihan '{$lockedBill->nama_tagihan}' siswa {$lockedBill->siswa?->nama} menjadi {$stateLabel}",
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            return [
+                'type' => 'success',
+                'message' => "Tagihan berhasil diubah menjadi {$stateLabel} dan ringkasan tagihan telah dihitung ulang.",
+            ];
+        });
+
+        return back()->with($result['type'], $result['message']);
     }
     
     public function storePembayaranBulan(Request $request, $tagihanId)
@@ -580,6 +618,7 @@ class TagihanController extends Controller
             ->get()
             ->map(function (Siswa $siswa) use ($periodReconciler) {
                 $tagihanAktif = $siswa->tagihan
+                    ->filter(fn (Tagihan $tagihan) => $tagihan->is_active)
                     ->filter(fn (Tagihan $tagihan) => $periodReconciler->belongsToConfiguredPeriod($tagihan));
                 $totalTagihan = $tagihanAktif->count();
                 $totalNominal = 0;
@@ -696,6 +735,7 @@ class TagihanController extends Controller
         ->get()
         ->map(function($siswa) use ($periodReconciler) {
             $tagihanAktif = $siswa->tagihan
+                ->filter(fn (Tagihan $tagihan) => $tagihan->is_active)
                 ->filter(fn (Tagihan $tagihan) => $periodReconciler->belongsToConfiguredPeriod($tagihan));
             $totalTagihan = $tagihanAktif->count();
             $totalNominal = $tagihanAktif->sum('nominal');
@@ -756,6 +796,7 @@ class TagihanController extends Controller
     {
         $siswa = \App\Models\Siswa::with(['kelas', 'sekolah', 'tahunAjaran'])->findOrFail($siswaId);
         $periodReconciler = app(TagihanPeriodReconciler::class);
+        $sppDiscountConfig = app(SppDiscountCalculator::class)->configuration();
         $academicYearData = TahunAjaran::validPeriods();
         $selectedTahunAjaran = $request->filled('tahun_ajaran')
             ? $academicYearData->firstWhere('id', $request->integer('tahun_ajaran'))
@@ -814,9 +855,11 @@ class TagihanController extends Controller
                         $totalBayarItem = $item->pembayaran->sum('jumlah_bayar');
                         $totalDiskonItem = $item->pembayaran->sum('diskon'); // ✅ TAMBAHAN
                         $sisaBayarItem = max(0, $item->nominal - ($totalBayarItem + $totalDiskonItem)); // ✅ PERBAIKAN
-                        $belumJatuhTempo = $sisaBayarItem > 0 && $item->isBelumJatuhTempo();
-                        $sisaTerhitung = $belumJatuhTempo ? 0 : $sisaBayarItem;
+                        $isActive = (bool) $item->is_active;
+                        $belumJatuhTempo = $isActive && $sisaBayarItem > 0 && $item->isBelumJatuhTempo();
+                        $sisaTerhitung = ! $isActive || $belumJatuhTempo ? 0 : $sisaBayarItem;
                         $status = match (true) {
+                            ! $isActive => 'tidak_aktif',
                             $sisaBayarItem <= 0 => 'lunas',
                             $belumJatuhTempo => 'belum_jatuh_tempo',
                             ($totalBayarItem + $totalDiskonItem) > 0 => 'sebagian',
@@ -838,17 +881,20 @@ class TagihanController extends Controller
                             'sisa_bayar' => $sisaBayarItem,
                             'sisa_terhitung' => $sisaTerhitung,
                             'belum_jatuh_tempo' => $belumJatuhTempo,
+                            'is_active' => $isActive,
                             'status' => $status,
                             'tanggal_jatuh_tempo' => $item->tanggal_jatuh_tempo,
                         ];
                     })->sortBy(fn ($item) => $this->getAcademicMonthSortKey($item['periode']));
 
-                    $groupSisaAktual = $bulanTagihan->sum('sisa_bayar');
-                    $groupSisaTerhitung = $bulanTagihan->sum('sisa_terhitung');
+                    $bulanTagihanAktif = $bulanTagihan->where('is_active', true);
+                    $groupSisaAktual = $bulanTagihanAktif->sum('sisa_bayar');
+                    $groupSisaTerhitung = $bulanTagihanAktif->sum('sisa_terhitung');
                     $groupStatus = match (true) {
+                        $bulanTagihanAktif->isEmpty() => 'tidak_aktif',
                         $groupSisaAktual <= 0 => 'lunas',
                         $groupSisaTerhitung <= 0 => 'belum_jatuh_tempo',
-                        ($bulanTagihan->sum('total_bayar') + $bulanTagihan->sum('total_diskon')) > 0 => 'sebagian',
+                        ($bulanTagihanAktif->sum('total_bayar') + $bulanTagihanAktif->sum('total_diskon')) > 0 => 'sebagian',
                         default => 'belum_lunas',
                     };
 
@@ -861,8 +907,8 @@ class TagihanController extends Controller
                         'academic_year_start' => $academicYearStart,
                         'academic_year_label' => $academicYearLabel,
                         'periode' => 'Tahunan',
-                        'nominal' => $tagihanBulanans->sum('nominal'),
-                        'total_bayar' => $bulanTagihan->sum('total_bayar'),
+                        'nominal' => $bulanTagihanAktif->sum('nominal'),
+                        'total_bayar' => $bulanTagihanAktif->sum('total_bayar'),
                         'total_diskon' => $bulanTagihan->sum('total_diskon'), // ✅ TAMBAHAN
                         'sisa_bayar' => $groupSisaAktual,
                         'sisa_terhitung' => $groupSisaTerhitung,
@@ -889,9 +935,11 @@ class TagihanController extends Controller
                     $periodeDisplay = 'Tahun ' . $tahun;
                 }
 
-                $belumJatuhTempo = $sisaBayar > 0 && $tagihan->isBelumJatuhTempo();
-                $sisaTerhitung = $belumJatuhTempo ? 0 : $sisaBayar;
+                $isActive = (bool) $tagihan->is_active;
+                $belumJatuhTempo = $isActive && $sisaBayar > 0 && $tagihan->isBelumJatuhTempo();
+                $sisaTerhitung = ! $isActive || $belumJatuhTempo ? 0 : $sisaBayar;
                 $status = match (true) {
+                    ! $isActive => 'tidak_aktif',
                     $sisaBayar <= 0 => 'lunas',
                     $belumJatuhTempo => 'belum_jatuh_tempo',
                     ($totalBayar + $totalDiskon) > 0 => 'sebagian',
@@ -913,6 +961,7 @@ class TagihanController extends Controller
                     'sisa_bayar' => $sisaBayar,
                     'sisa_terhitung' => $sisaTerhitung,
                     'belum_jatuh_tempo' => $belumJatuhTempo,
+                    'is_active' => $isActive,
                     'status' => $status,
                     'tanggal_jatuh_tempo' => $tagihan->tanggal_jatuh_tempo,
                 ];
@@ -938,15 +987,18 @@ class TagihanController extends Controller
                 : collect([$tagihan]);
         });
 
+        $activeBillItems = $billItems->where('is_active', true);
+
         $studentSummary = [
-            'total_tagihan' => $billItems->count(),
-            'total_nominal' => $billItems->sum('nominal'),
-            'total_dibayar' => $billItems->sum('total_bayar'),
-            'total_diskon' => $billItems->sum('total_diskon'),
-            'sisa_bayar' => $billItems->sum(fn ($item) => max(0, (float) ($item['sisa_terhitung'] ?? $item['sisa_bayar']))),
-            'sisa_aktual' => $billItems->sum(fn ($item) => max(0, (float) $item['sisa_bayar'])),
-            'belum_lunas' => $billItems->filter(fn ($item) => (float) $item['sisa_bayar'] > 0)->count(),
-            'belum_jatuh_tempo' => $billItems->where('status', 'belum_jatuh_tempo')->count(),
+            'total_tagihan' => $activeBillItems->count(),
+            'total_nominal' => $activeBillItems->sum('nominal'),
+            'total_dibayar' => $activeBillItems->sum('total_bayar'),
+            'total_diskon' => $activeBillItems->sum('total_diskon'),
+            'sisa_bayar' => $activeBillItems->sum(fn ($item) => max(0, (float) ($item['sisa_terhitung'] ?? $item['sisa_bayar']))),
+            'sisa_aktual' => $activeBillItems->sum(fn ($item) => max(0, (float) $item['sisa_bayar'])),
+            'belum_lunas' => $activeBillItems->filter(fn ($item) => (float) $item['sisa_bayar'] > 0)->count(),
+            'belum_jatuh_tempo' => $activeBillItems->where('status', 'belum_jatuh_tempo')->count(),
+            'tidak_aktif' => $billItems->where('is_active', false)->count(),
         ];
 
         return view('tagihan.proses_siswa', compact(
@@ -954,7 +1006,8 @@ class TagihanController extends Controller
             'tagihanList',
             'studentSummary',
             'academicYearData',
-            'selectedTahunAjaran'
+            'selectedTahunAjaran',
+            'sppDiscountConfig'
         ));
     }
 
@@ -1262,6 +1315,7 @@ class TagihanController extends Controller
         $totalBayarTransaksi = 0;
         $totalDiskonTransaksi = 0;
         $errorMessages = [];
+        $sppDiscountCalculator = app(SppDiscountCalculator::class);
 
         // ✅ GENERATE TRANSACTION ID
         $transactionId = \Illuminate\Support\Str::uuid()->toString();
@@ -1278,6 +1332,7 @@ class TagihanController extends Controller
 
                 // ✅ AMBIL DATA TAGIHAN DENGAN PEMBAYARAN
                 $tagihan = \App\Models\Tagihan::with(['pembayaran', 'jenisPembayaran'])
+                    ->lockForUpdate()
                     ->findOrFail($tagihanId);
 
                 // ✅ VALIDASI TAGIHAN MILIK SISWA YANG BENAR
@@ -1285,15 +1340,24 @@ class TagihanController extends Controller
                     throw new \Exception("Tagihan ID {$tagihanId} bukan milik siswa {$siswa->nama}.");
                 }
 
+                if (! $tagihan->is_active) {
+                    $errorMessages[] = "Tagihan '{$tagihan->nama_tagihan}' sedang tidak aktif dan tidak dapat dibayar.";
+                    continue;
+                }
+
                 // ✅ AMBIL DATA DISKON DARI REQUEST
-                $originalAmount = floatval($request->input("original_amount.{$tagihanId}", 0));
-                $discountAmount = floatval($request->input("discount_amount.{$tagihanId}", 0));
-                $hasDiscount = $request->input("has_discount.{$tagihanId}") === 'true';
 
                 // ✅ HITUNG SISA TAGIHAN SAAT INI
                 $totalBayarSebelumnya = $tagihan->pembayaran->sum('jumlah_bayar');
                 $totalDiskonSebelumnya = $tagihan->pembayaran->sum('diskon');
                 $sisaBayarSebelumnya = $tagihan->nominal - ($totalBayarSebelumnya + $totalDiskonSebelumnya);
+                $discountAmount = $sppDiscountCalculator->settlementDiscount(
+                    $tagihan,
+                    $request->tanggal_bayar,
+                    (float) $jumlahBayar,
+                    (float) $totalBayarSebelumnya + (float) $totalDiskonSebelumnya
+                );
+                $hasDiscount = $discountAmount > 0;
 
                 // ✅ VALIDASI SISA TAGIHAN
                 if ($sisaBayarSebelumnya <= 0) {
@@ -1312,34 +1376,9 @@ class TagihanController extends Controller
                     }
 
                     // ✅ VALIDASI DISKON SPP (hanya berlaku untuk pembayaran lunas)
-                    if ($discountAmount > 0) {
-                        // Cek apakah ini tagihan SPP
-                        $isSPP = is_null($tagihan->jenis_pembayaran_id)
-                            || strcasecmp((string) $tagihan->jenisPembayaran?->nama_pembayaran, 'SPP') === 0;
-
-                        if ($isSPP) {
-                            // Validasi periode diskon (sampai tanggal 10)
-                            $tanggalBayar = \Carbon\Carbon::parse($request->tanggal_bayar);
-                            $periodeBulan = \Carbon\Carbon::parse($tagihan->periode . '-01');
-                            $batasDiskon = \Carbon\Carbon::create($periodeBulan->year, $periodeBulan->month, 10);
-
-                            if ($tanggalBayar > $batasDiskon) {
-                                $errorMessages[] = "Diskon untuk '{$tagihan->nama_tagihan}' tidak berlaku karena lewat tanggal 10.";
-                                continue;
-                            }
-
-                            // Validasi pembayaran harus lunas untuk dapat diskon
-                            if ($totalCoverage < $sisaBayarSebelumnya) {
-                                $errorMessages[] = "Diskon untuk '{$tagihan->nama_tagihan}' hanya berlaku untuk pembayaran lunas.";
-                                continue;
-                            }
-
-                            // Validasi maksimal diskon Rp 25.000
-                            if ($discountAmount > 25000) {
-                                $errorMessages[] = "Maksimal diskon untuk SPP adalah Rp 25.000.";
-                                continue;
-                            }
-                        }
+                    if ($totalCoverage < $sisaBayarSebelumnya) {
+                        $errorMessages[] = "Diskon untuk '{$tagihan->nama_tagihan}' hanya berlaku untuk pembayaran lunas.";
+                        continue;
                     }
                 } else {
                     // Tanpa diskon, validasi normal

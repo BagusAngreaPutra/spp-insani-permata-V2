@@ -138,6 +138,17 @@
         white-space: nowrap;
     }
 
+    .badge-nonaktif {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+        padding: 0.4rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
     @media (max-width: 640px) {
         .page-header {
             align-items: stretch;
@@ -204,7 +215,9 @@
                             <td>{{ $tagihan->tanggal_jatuh_tempo?->format('d/m/Y') ?? '-' }}</td>
                             <td>Rp {{ number_format($tagihan->nominal, 0, ',', '.') }}</td>
                             <td>
-                                @if($sisaAktual <= 0)
+                                @if(!$tagihan->is_active)
+                                    <span class="badge-nonaktif">Tidak aktif</span>
+                                @elseif($sisaAktual <= 0)
                                     <span class="badge-lunas">Lunas</span>
                                 @elseif($belumJatuhTempo)
                                     <span class="badge-mendatang">Belum jatuh tempo</span>

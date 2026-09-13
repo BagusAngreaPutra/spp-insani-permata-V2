@@ -669,24 +669,13 @@
                             <i class="fas fa-sliders" aria-hidden="true"></i>
                             <span>Filter</span>
                         </button>
-                        <a class="overview-action is-primary" href="{{ route('laporan.pembayaran') }}">
+                        <a class="overview-action is-primary" href="{{ route('laporan.tagihan_siswa') }}">
                             <i class="fas fa-chart-column" aria-hidden="true"></i>
                             <span>Lihat laporan</span>
                         </a>
                     </div>
                 </div>
             </header>
-
-            <section class="admin-triangle-alert" role="status" aria-label="Perhatian dashboard admin">
-                <span class="admin-triangle-alert__shape" aria-hidden="true">
-                    <i class="fas fa-exclamation" aria-hidden="true"></i>
-                </span>
-                <div class="admin-triangle-alert__content">
-                    <span class="admin-triangle-alert__eyebrow">Perhatian admin</span>
-                    <h2 class="admin-triangle-alert__title">Pastikan data dashboard selalu diperiksa</h2>
-                    <p class="admin-triangle-alert__text">Pantau pembayaran, tagihan, dan saldo sekolah dari ringkasan di bawah ini.</p>
-                </div>
-            </section>
 
             <section class="overview-filter-panel {{ $filterAktif ? 'is-open' : '' }}" id="overviewFilterPanel" aria-label="Filter ringkasan">
                 <form class="overview-filter-form" method="GET" action="{{ route('dashboard') }}">

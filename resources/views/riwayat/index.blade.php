@@ -7,6 +7,7 @@
 @php
     $adminUser = Auth::guard('web')->user();
     $canCorrectPayment = $adminUser?->hasPermission('pembayaran.process') ?? false;
+    $canManageIncome = $adminUser?->hasPermission('pemasukan.manage') ?? false;
     $formatRupiah = static fn ($amount) => 'Rp' . number_format((float) $amount, 0, ',', '.');
     $classLabel = static function ($kelas) {
         if (!$kelas) {
@@ -26,8 +27,9 @@
         ? $classLabel($kelasList->firstWhere('id', $selectedKelas))
         : null;
     $selectedTypeName = match($selectedJenisPembayaran) {
-        'sekolah' => 'Pembayaran sekolah',
+        'sekolah' => 'Tagihan siswa',
         'koperasi' => 'Koperasi',
+        'pemasukan' => 'Pemasukan lainnya',
         default => null,
     };
     $filterContext = collect([
@@ -223,6 +225,7 @@
     }
 
     .history-filter-form {
+        position: relative;
         padding: 16px 18px;
         background: #fbfcfd;
         border-bottom: 1px solid #e4e7ec;
@@ -230,16 +233,18 @@
 
     .history-filter-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
+        grid-template-columns: minmax(180px, 1.15fr) repeat(2, minmax(150px, 1fr)) auto auto;
+        align-items: end;
+        gap: 10px;
+    }
+
+    .history-filter-grid > .history-reset-button {
+        align-self: end;
+        min-height: 38px !important;
     }
 
     .history-field {
         min-width: 0;
-    }
-
-    .history-field.is-wide {
-        grid-column: span 3;
     }
 
     .history-field label {
@@ -275,10 +280,10 @@
     .history-filter-footer {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 14px;
-        margin-top: 14px;
-        padding-top: 13px;
+        margin-top: 11px;
+        padding-top: 11px;
         border-top: 1px solid #eef0f3;
     }
 
@@ -290,6 +295,10 @@
         font-size: 10px;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .history-filter-form .pi-advanced-filter-panel-header {
+        display: none;
     }
 
     .history-summary {
@@ -312,6 +321,30 @@
     .history-summary strong {
         color: #344054;
         font-weight: 700;
+    }
+
+    .history-summary-type {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-weight: 650;
+    }
+
+    .history-summary-type.is-school {
+        color: #175cd3;
+        background: #eff8ff;
+    }
+
+    .history-summary-type.is-cooperative {
+        color: #b54708;
+        background: #fffaeb;
+    }
+
+    .history-summary-type.is-income {
+        color: #6941c6;
+        background: #f4f3ff;
     }
 
     .history-list-head,
@@ -347,6 +380,19 @@
     .history-row {
         background: #fff;
         border-bottom: 1px solid #e4e7ec;
+        border-left: 4px solid transparent;
+    }
+
+    .history-row.is-school {
+        border-left-color: #2e90fa;
+    }
+
+    .history-row.is-cooperative {
+        border-left-color: #f79009;
+    }
+
+    .history-row.is-income {
+        border-left-color: #7f56d9;
     }
 
     .history-row:last-child {
@@ -371,6 +417,21 @@
     .history-row-summary:hover,
     .history-row[open] > .history-row-summary {
         background: #f9fafb;
+    }
+
+    .history-row.is-school > .history-row-summary:hover,
+    .history-row.is-school[open] > .history-row-summary {
+        background: #f5faff;
+    }
+
+    .history-row.is-cooperative > .history-row-summary:hover,
+    .history-row.is-cooperative[open] > .history-row-summary {
+        background: #fffaf0;
+    }
+
+    .history-row.is-income > .history-row-summary:hover,
+    .history-row.is-income[open] > .history-row-summary {
+        background: #f9f5ff;
     }
 
     .history-student {
@@ -444,8 +505,18 @@
     }
 
     .history-source-badge.is-school {
-        color: #1d6b4c;
+        color: #175cd3;
         background: #eff8ff;
+    }
+
+    .history-source-badge.is-cooperative {
+        color: #b54708;
+        background: #fffaeb;
+    }
+
+    .history-source-badge.is-income {
+        color: #6941c6;
+        background: #f4f3ff;
     }
 
     .history-total {
@@ -529,6 +600,18 @@
         font-weight: 700 !important;
         text-align: left !important;
         text-transform: uppercase;
+    }
+
+    .history-row.is-school .history-detail-table th {
+        background: #eff8ff !important;
+    }
+
+    .history-row.is-cooperative .history-detail-table th {
+        background: #fffaeb !important;
+    }
+
+    .history-row.is-income .history-detail-table th {
+        background: #f4f3ff !important;
     }
 
     .history-detail-table td {
@@ -656,9 +739,7 @@
     }
 
     @media (max-width: 1100px) {
-        .history-filter-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
+        .history-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
         .history-list-head,
         .history-row-summary {
@@ -686,10 +767,6 @@
 
         .history-filter-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .history-field.is-wide {
-            grid-column: 1 / -1;
         }
 
         .history-filter-footer,
@@ -780,10 +857,6 @@
             grid-template-columns: minmax(0, 1fr);
         }
 
-        .history-field.is-wide {
-            grid-column: auto;
-        }
-
         .history-filter-actions {
             grid-template-columns: minmax(0, 1fr);
         }
@@ -823,11 +896,20 @@
                 </div>
             @endif
 
+            @php
+                $historyHeading = match($selectedJenisPembayaran) {
+                    'sekolah' => ['Riwayat pembayaran siswa', 'Seluruh pembayaran tagihan siswa yang telah diproses.'],
+                    'koperasi' => ['Riwayat koperasi', 'Seluruh transaksi penjualan koperasi yang telah diproses.'],
+                    'pemasukan' => ['Riwayat pemasukan', 'Seluruh transaksi pemasukan lainnya yang telah dicatat.'],
+                    default => ['Riwayat transaksi', 'Tagihan siswa, transaksi koperasi, dan pemasukan lainnya tersaji dalam satu daftar.'],
+                };
+            @endphp
+
             <header class="history-heading">
                 <div>
                     <p class="history-eyebrow">Pembayaran</p>
-                    <h1 class="history-title" data-page-title>Riwayat transaksi</h1>
-                    <p class="history-subtitle">Filter transaksi, buka rincian tagihan, lalu cetak kwitansi dari satu daftar.</p>
+                    <h1 class="history-title" data-page-title>{{ $historyHeading[0] }}</h1>
+                    <p class="history-subtitle">{{ $historyHeading[1] }}</p>
                 </div>
 
                 <div class="history-heading-actions">
@@ -837,6 +919,10 @@
                     </a>
                 </div>
             </header>
+
+            @if(in_array($selectedJenisPembayaran, ['sekolah', 'koperasi', 'pemasukan'], true))
+                @include('partials.transaction-tabs', ['module' => $selectedJenisPembayaran, 'active' => 'history'])
+            @endif
 
             <section class="history-panel">
                 <div class="history-panel-heading">
@@ -848,14 +934,14 @@
 
                 <form class="history-filter-form" id="historyFilterForm" method="GET" action="{{ route('riwayat.index') }}">
                     <div class="history-filter-grid">
-                        <div class="history-field is-wide">
+                        <div class="history-field">
                             <label for="historySearch">Cari transaksi</label>
                             <input
                                 id="historySearch"
                                 name="search"
                                 type="search"
                                 value="{{ $search }}"
-                                placeholder="Nama, NIS, nomor transaksi, tagihan, atau barang..."
+                                placeholder="Nama, NIS, atau nomor transaksi..."
                                 autocomplete="off"
                             >
                         </div>
@@ -864,8 +950,9 @@
                             <label for="historyType">Jenis transaksi</label>
                             <select id="historyType" name="jenis_pembayaran">
                                 <option value="">Semua transaksi</option>
-                                <option value="sekolah" {{ $selectedJenisPembayaran === 'sekolah' ? 'selected' : '' }}>Pembayaran sekolah</option>
+                                <option value="sekolah" {{ $selectedJenisPembayaran === 'sekolah' ? 'selected' : '' }}>Tagihan siswa</option>
                                 <option value="koperasi" {{ $selectedJenisPembayaran === 'koperasi' ? 'selected' : '' }}>Koperasi</option>
+                                <option value="pemasukan" {{ $selectedJenisPembayaran === 'pemasukan' ? 'selected' : '' }}>Pemasukan lainnya</option>
                             </select>
                         </div>
 
@@ -909,39 +996,28 @@
                             <label for="historyEndDate">Sampai tanggal</label>
                             <input id="historyEndDate" name="end_date" type="date" value="{{ $endDate }}" min="{{ $startDate }}">
                         </div>
-                    </div>
 
-                    <div class="history-filter-footer">
-                        <p class="history-filter-context">
-                            {{ $filterContext ?: 'Menampilkan transaksi dari semua sekolah, kelas, dan jenis pembayaran.' }}
-                        </p>
-                        <div class="history-filter-actions">
-                            @if($hasActiveFilters)
-                                <a class="history-button" href="{{ route('riwayat.index') }}">
-                                    <i class="fas fa-rotate-left" aria-hidden="true"></i>
-                                    <span>Reset</span>
-                                </a>
-                            @endif
-                            <button class="history-button is-primary" type="submit">
-                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                                <span>Tampilkan</span>
-                            </button>
-                        </div>
+                        <a class="history-button history-reset-button" href="{{ route('riwayat.index') }}" data-filter-reset>
+                            <i class="fas fa-rotate-left" aria-hidden="true"></i>
+                            <span>Reset</span>
+                        </a>
+
                     </div>
                 </form>
 
                 <div class="history-summary">
                     <div class="history-summary-group">
                         <span><strong>{{ number_format($transactionSummary['total'], 0, ',', '.') }}</strong> transaksi</span>
-                        <span>{{ number_format($transactionSummary['sekolah'], 0, ',', '.') }} pembayaran sekolah</span>
-                        <span>{{ number_format($transactionSummary['koperasi'], 0, ',', '.') }} koperasi</span>
+                        <span class="history-summary-type is-school">{{ number_format($transactionSummary['sekolah'], 0, ',', '.') }} tagihan siswa</span>
+                        <span class="history-summary-type is-cooperative">{{ number_format($transactionSummary['koperasi'], 0, ',', '.') }} koperasi</span>
+                        <span class="history-summary-type is-income">{{ number_format($transactionSummary['pemasukan'], 0, ',', '.') }} pemasukan lainnya</span>
                     </div>
                     <span>Total diterima <strong>{{ $formatRupiah($transactionSummary['nominal']) }}</strong></span>
                 </div>
 
                 @if($transaksi->isNotEmpty())
                     <div class="history-list-head" aria-hidden="true">
-                        <span>Siswa / transaksi</span>
+                        <span>Sumber / transaksi</span>
                         <span>Sekolah / kelas</span>
                         <span>Tanggal</span>
                         <span>Jenis</span>
@@ -955,51 +1031,66 @@
                                 $siswa = $tx['siswa'];
                                 $items = collect($tx['items']);
                                 $firstItem = $items->first();
-                                $isCooperative = ($tx['source_type'] ?? 'sekolah') === 'koperasi';
+                                $sourceType = $tx['source_type'] ?? 'sekolah';
+                                $isSchool = $sourceType === 'sekolah';
+                                $isCooperative = $sourceType === 'koperasi';
+                                $isIncome = $sourceType === 'pemasukan';
+                                $school = $tx['sekolah'] ?? $siswa?->sekolah;
+                                $class = $tx['kelas'] ?? $siswa?->kelas;
                                 $reference = $tx['transaction_id']
                                     ?: ($firstItem?->nomor_kwitansi ?: 'Transaksi #' . ($firstItem?->id ?? $loop->iteration));
-                                $studentName = $siswa?->nama ?? 'Siswa tidak tersedia';
-                                $initial = mb_strtoupper(mb_substr(trim($studentName), 0, 1));
-                                $receiptUrl = $isCooperative
-                                    ? route('koperasi.penjualan.kwitansi', $tx['ids'])
-                                    : route('pembayaran.kwitansi.grup', ['ids' => $tx['ids']]);
-                                $correctionUrl = !$isCooperative && $firstItem
+                                $incomeSource = trim((string) ($firstItem?->sumber ?? ''));
+                                $recordTitle = $isIncome
+                                    ? ($incomeSource !== '' ? $incomeSource : 'Pemasukan lainnya')
+                                    : ($siswa?->nama ?? 'Siswa tidak tersedia');
+                                $initial = mb_strtoupper(mb_substr(trim($recordTitle), 0, 1));
+                                $receiptUrl = match($sourceType) {
+                                    'sekolah' => route('pembayaran.kwitansi.grup', ['ids' => $tx['ids']]),
+                                    'koperasi' => route('koperasi.penjualan.kwitansi', $tx['ids']),
+                                    default => null,
+                                };
+                                $correctionUrl = $isSchool && $firstItem
                                     ? route('pembayaran.koreksi.edit', $firstItem->id)
                                     : null;
-                                $receiptPdfUrl = !$isCooperative
+                                $receiptPdfUrl = $isSchool
                                     ? route('pembayaran.kwitansi.grup.pdf', ['ids' => $tx['ids']])
                                     : null;
+                                $sourceTone = match($sourceType) {
+                                    'koperasi' => 'is-cooperative',
+                                    'pemasukan' => 'is-income',
+                                    default => 'is-school',
+                                };
                                 $transactionValue = (float) $tx['total_bayar'] + (float) $tx['total_diskon'];
                             @endphp
 
-                            <details class="history-row">
+                            <details class="history-row {{ $sourceTone }}">
                                 <summary class="history-row-summary">
                                     <div class="history-student">
                                         <span class="history-avatar">{{ $initial ?: '?' }}</span>
                                         <span class="history-student-copy">
-                                            <strong>{{ $studentName }}</strong>
-                                            <span>NIS {{ $siswa?->nis ?? '-' }}</span>
+                                            <strong>{{ $recordTitle }}</strong>
+                                            <span>{{ $isIncome ? 'Pemasukan non-tagihan' : 'NIS ' . ($siswa?->nis ?? '-') }}</span>
                                             <span>{{ $reference }}</span>
                                         </span>
                                     </div>
 
                                     <div class="history-column" data-label="Sekolah / kelas">
                                         <span class="history-column-copy">
-                                            <strong>{{ $siswa?->sekolah?->nama_sekolah ?? 'Sekolah belum diatur' }}</strong>
-                                            <span>{{ $classLabel($siswa?->kelas) }}</span>
+                                            <strong>{{ $school?->nama_sekolah ?? 'Sekolah belum diatur' }}</strong>
+                                            <span>{{ $isIncome ? 'Tidak terkait kelas' : $classLabel($class) }}</span>
                                         </span>
                                     </div>
 
                                     <div class="history-column" data-label="Tanggal">
                                         <span class="history-column-copy">
-                                            <strong>Bayar {{ \Carbon\Carbon::parse($tx['tanggal_bayar'])->translatedFormat('d M Y') }}</strong>
-                                            <span>Kuitansi {{ \Carbon\Carbon::parse($tx['tanggal_kwitansi'] ?? $tx['tanggal_bayar'])->translatedFormat('d M Y') }} · {{ $tx['metode_bayar'] ?: 'Metode tidak dicatat' }}</span>
+                                            <strong>{{ $isIncome ? 'Diterima' : 'Bayar' }} {{ \Carbon\Carbon::parse($tx['tanggal_bayar'])->translatedFormat('d M Y') }}</strong>
+                                            <span>{{ $isIncome ? 'Dicatat sebagai pemasukan langsung' : 'Kuitansi ' . \Carbon\Carbon::parse($tx['tanggal_kwitansi'] ?? $tx['tanggal_bayar'])->translatedFormat('d M Y') . ' · ' . ($tx['metode_bayar'] ?: 'Metode tidak dicatat') }}</span>
                                         </span>
                                     </div>
 
                                     <div class="history-source" data-label="Jenis">
-                                        <span class="history-source-badge {{ $isCooperative ? '' : 'is-school' }}">
-                                            {{ $isCooperative ? 'Koperasi' : 'Sekolah' }}
+                                        <span class="history-source-badge {{ $sourceTone }}">
+                                            {{ $tx['source_label'] }}
                                         </span>
                                     </div>
 
@@ -1015,7 +1106,7 @@
                                 <div class="history-detail">
                                     <div class="history-detail-heading">
                                         <div>
-                                            <h3 class="history-detail-title">{{ $isCooperative ? 'Rincian barang' : 'Rincian tagihan' }}</h3>
+                                            <h3 class="history-detail-title">{{ $isIncome ? 'Rincian pemasukan' : ($isCooperative ? 'Rincian barang' : 'Rincian tagihan') }}</h3>
                                             <span class="history-detail-caption">{{ $items->count() }} item dalam transaksi {{ $reference }}</span>
                                         </div>
                                         <div class="history-detail-actions">
@@ -1025,10 +1116,17 @@
                                                     <span>Koreksi transaksi</span>
                                                 </a>
                                             @endif
-                                            <a class="history-button is-compact" href="{{ $receiptUrl }}" target="_blank" rel="noopener">
-                                                <i class="fas fa-print" aria-hidden="true"></i>
-                                                <span>Cetak kwitansi</span>
-                                            </a>
+                                            @if($receiptUrl)
+                                                <a class="history-button is-compact" href="{{ $receiptUrl }}" target="_blank" rel="noopener">
+                                                    <i class="fas fa-print" aria-hidden="true"></i>
+                                                    <span>Cetak kwitansi</span>
+                                                </a>
+                                            @elseif($isIncome && $canManageIncome)
+                                                <a class="history-button is-compact" href="{{ route('pemasukan.show', $tx['ids']) }}">
+                                                    <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                                                    <span>Lihat data pemasukan</span>
+                                                </a>
+                                            @endif
                                             @if($receiptPdfUrl)
                                                 <a class="history-button is-compact is-pdf" href="{{ $receiptPdfUrl }}" target="_blank" rel="noopener">
                                                     <i class="fas fa-file-pdf" aria-hidden="true"></i>
@@ -1043,15 +1141,15 @@
                                             <thead>
                                                 <tr>
                                                     <th>Rincian</th>
-                                                    <th>{{ $isCooperative ? 'Jumlah' : 'Periode' }}</th>
-                                                    <th class="history-money">Nilai transaksi</th>
+                                                    <th>{{ $isIncome ? 'Keterangan' : ($isCooperative ? 'Jumlah' : 'Periode') }}</th>
+                                                    <th class="history-money">{{ $isIncome ? 'Nilai pemasukan' : 'Nilai transaksi' }}</th>
                                                     <th class="history-money">Potongan</th>
                                                     <th class="history-money">Diterima</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @foreach($items as $item)
-                                                    @if(!$isCooperative)
+                                                    @if($isSchool)
                                                         @php
                                                             $historyBillPeriod = trim((string) ($item->tagihan?->periode ?? $item->periode ?? ''));
                                                             $historyIsMonthlyBill = $item->tagihan?->tipe === 'bulanan';
@@ -1065,7 +1163,13 @@
                                                         @endphp
                                                     @endif
                                                     <tr>
-                                                        @if($isCooperative)
+                                                        @if($isIncome)
+                                                            <td><strong>{{ $item->sumber ?: 'Pemasukan lainnya' }}</strong></td>
+                                                            <td>{{ $item->keterangan ?: 'Tidak ada keterangan' }}</td>
+                                                            <td class="history-money">{{ $formatRupiah($item->jumlah) }}</td>
+                                                            <td class="history-money">—</td>
+                                                            <td class="history-money"><strong>{{ $formatRupiah($item->jumlah) }}</strong></td>
+                                                        @elseif($isCooperative)
                                                             <td><strong>{{ $item->nama_barang }}</strong></td>
                                                             <td>{{ number_format($item->jumlah, 0, ',', '.') }} item</td>
                                                             <td class="history-money">{{ $formatRupiah($item->harga_satuan * $item->jumlah) }}</td>
@@ -1138,6 +1242,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('historyFilterForm');
+    const search = document.getElementById('historySearch');
+    const type = document.getElementById('historyType');
     const school = document.getElementById('historySchool');
     const classSelect = document.getElementById('historyClass');
     const startDate = document.getElementById('historyStartDate');
@@ -1153,6 +1259,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     classSelect?.addEventListener('change', () => form?.submit());
+    type?.addEventListener('change', () => form?.submit());
+
+    let searchTimer;
+    search?.addEventListener('input', () => {
+        window.clearTimeout(searchTimer);
+        searchTimer = window.setTimeout(() => form?.submit(), 500);
+    });
 
     startDate?.addEventListener('change', () => {
         if (!endDate) return;
@@ -1160,7 +1273,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (endDate.value && endDate.value < startDate.value) {
             endDate.value = startDate.value;
         }
+        form?.submit();
     });
+
+    endDate?.addEventListener('change', () => form?.submit());
 
     rows.forEach((row) => {
         row.addEventListener('toggle', () => {

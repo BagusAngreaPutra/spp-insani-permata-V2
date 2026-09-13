@@ -23,10 +23,14 @@
         ->reject(fn ($item) => $item['is_grouped'])
         ->values();
     $singleOutstandingTotal = $singleTagihanList->sum(
-        fn ($item) => max(0, (float) ($item['sisa_terhitung'] ?? $item['sisa_bayar']))
+        fn ($item) => ($item['is_active'] ?? true)
+            ? max(0, (float) ($item['sisa_terhitung'] ?? $item['sisa_bayar']))
+            : 0
     );
     $defaultOpenGroup = $groupedTagihanList->search(
-        fn ($item) => (float) ($item['sisa_terhitung'] ?? $item['sisa_bayar']) > 0
+        fn ($item) => collect($item['bulan_tagihan'])->contains(
+            fn ($month) => ($month['is_active'] ?? true) && (float) $month['sisa_bayar'] > 0
+        )
     );
     if ($defaultOpenGroup === false) {
         $defaultOpenGroup = $groupedTagihanList->isNotEmpty() ? 0 : false;
@@ -241,6 +245,12 @@
         height: 30px;
         background: rgba(255, 255, 255, .7);
         border-radius: 7px;
+    }
+
+    .payment-alert.is-success {
+        color: #087451;
+        background: #ecfdf3;
+        border-color: #abefc6;
     }
 
     .payment-student-card {
@@ -673,12 +683,13 @@
     }
 
     .payment-bill-table .payment-col-check { width: 5%; }
-    .payment-bill-table .payment-col-period { width: 19%; }
-    .payment-bill-table .payment-col-due { width: 16%; }
-    .payment-bill-table .payment-col-nominal { width: 13%; }
-    .payment-bill-table .payment-col-paid { width: 14%; }
-    .payment-bill-table .payment-col-remaining { width: 13%; }
-    .payment-bill-table .payment-col-status { width: 20%; }
+    .payment-bill-table .payment-col-period { width: 18%; }
+    .payment-bill-table .payment-col-due { width: 15%; }
+    .payment-bill-table .payment-col-nominal { width: 12%; }
+    .payment-bill-table .payment-col-paid { width: 13%; }
+    .payment-bill-table .payment-col-remaining { width: 12%; }
+    .payment-bill-table .payment-col-status { width: 18%; }
+    .payment-bill-table .payment-col-action { width: 7%; }
 
     .payment-bill-table th {
         height: 42px !important;
@@ -712,13 +723,66 @@
         text-align: center !important;
     }
 
+    .payment-bill-action-cell {
+        text-align: center !important;
+    }
+
+    .payment-activation-form {
+        display: inline-flex;
+        margin: 0;
+    }
+
+    .payment-activation-button {
+        display: inline-grid !important;
+        place-items: center !important;
+        flex: 0 0 25px;
+        width: 25px !important;
+        height: 25px !important;
+        min-height: 25px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: #667085 !important;
+        background: rgba(102, 112, 133, .06) !important;
+        border: 1px solid rgba(102, 112, 133, .18) !important;
+        border-radius: 6px !important;
+        font-size: 8px !important;
+        opacity: .52;
+        cursor: pointer;
+        transition: opacity .16s ease, background-color .16s ease, border-color .16s ease;
+    }
+
+    .payment-activation-button.is-inactive {
+        color: #47705f !important;
+        background: rgba(71, 112, 95, .07) !important;
+        border-color: rgba(71, 112, 95, .2) !important;
+        opacity: .64;
+    }
+
+    .payment-activation-button:hover {
+        background: rgba(102, 112, 133, .11) !important;
+        border-color: rgba(102, 112, 133, .3) !important;
+        opacity: .86;
+    }
+
+    .payment-activation-button:focus-visible {
+        outline: 2px solid rgba(102, 112, 133, .32);
+        outline-offset: 2px;
+        opacity: 1;
+    }
+
+    .payment-row-inactive td,
+    .payment-single.is-inactive {
+        background: #f8fafc !important;
+    }
+
     .payment-bill-table :is(th, td):nth-child(4),
     .payment-bill-table :is(th, td):nth-child(5),
     .payment-bill-table :is(th, td):nth-child(6) {
         text-align: right !important;
     }
 
-    .payment-bill-table :is(th, td):nth-child(7) {
+    .payment-bill-table :is(th, td):nth-child(7),
+    .payment-bill-table :is(th, td):nth-child(8) {
         text-align: center !important;
     }
 
@@ -784,6 +848,16 @@
 
     .payment-status.is-partial::before {
         background: #f79009;
+    }
+
+    .payment-status.is-inactive {
+        color: #475467;
+        background: #f2f4f7;
+        border: 1px solid #d0d5dd;
+    }
+
+    .payment-status.is-inactive::before {
+        background: #98a2b3;
     }
 
     .payment-single-section {
@@ -887,7 +961,7 @@
 
     .payment-single-grid {
         display: grid;
-        grid-template-columns: 5% 19% 16% 13% 14% 13% 20%;
+        grid-template-columns: 5% 18% 15% 12% 13% 12% 18% 7%;
         align-items: center;
         min-width: 0;
     }
@@ -911,11 +985,12 @@
         padding: 8px 12px;
     }
 
-    .payment-single-head > span:nth-child(n+4) {
+    .payment-single-head > span:nth-child(n+4):nth-child(-n+6) {
         justify-content: flex-end;
     }
 
-    .payment-single-head > span:last-child {
+    .payment-single-head > span:nth-child(7),
+    .payment-single-head > span:nth-child(8) {
         justify-content: center;
     }
 
@@ -961,13 +1036,15 @@
         padding: 9px 12px;
     }
 
-    .payment-single-head > span:nth-child(n+4),
-    .payment-single > div:nth-child(n+4):not(:last-child) {
+    .payment-single-head > span:nth-child(n+4):nth-child(-n+6),
+    .payment-single > div:nth-child(n+4):nth-child(-n+6) {
         text-align: right;
     }
 
-    .payment-single-head > span:last-child,
-    .payment-single > div:last-child {
+    .payment-single-head > span:nth-child(7),
+    .payment-single-head > span:nth-child(8),
+    .payment-single > div:nth-child(7),
+    .payment-single > div:nth-child(8) {
         text-align: center;
     }
 
@@ -1583,7 +1660,7 @@
         .payment-bill-table td.payment-bill-check-cell {
             display: grid !important;
             grid-column: 1;
-            grid-row: 1 / span 6;
+            grid-row: 1 / span 7;
             place-items: center !important;
             padding: 0 !important;
             border-right: 1px solid #eef0f3 !important;
@@ -1635,11 +1712,16 @@
         }
 
         .payment-single-check {
-            grid-row: 1 / span 6;
+            grid-row: 1 / span 7;
             align-self: stretch;
             display: grid;
             place-items: center;
             border-right: 1px solid #eef0f3;
+        }
+
+        .payment-bill-action-cell .payment-activation-form,
+        .payment-single-action .payment-activation-form {
+            justify-self: end;
         }
 
         .payment-summary-copy {
@@ -1712,6 +1794,20 @@
 
     <div class="content-area">
         <div class="payment-page">
+            @if(session('success'))
+                <div class="payment-alert is-success" role="status">
+                    <i class="fas fa-circle-check"></i>
+                    <span>{{ session('success') }}</span>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="payment-alert" role="alert">
+                    <i class="fas fa-circle-exclamation"></i>
+                    <span>{{ session('error') }}</span>
+                </div>
+            @endif
+
             @if($errors->any())
                 <div class="payment-alert" role="alert">
                     <i class="fas fa-circle-exclamation"></i>
@@ -1784,7 +1880,7 @@
                     <span class="payment-stat-label"><i class="fas fa-file-invoice payment-stat-icon" aria-hidden="true"></i>Total tagihan</span>
                     <strong>{{ number_format($studentSummary['total_tagihan'], 0, ',', '.') }}</strong>
                 </article>
-                <article class="payment-stat">
+                <article class="payment-stat is-nominal">
                     <span class="payment-stat-label"><i class="fas fa-coins payment-stat-icon" aria-hidden="true"></i>Total nominal</span>
                     <strong>{{ $formatRupiah($studentSummary['total_nominal']) }}</strong>
                 </article>
@@ -1804,7 +1900,12 @@
                         <span class="payment-step-number">1</span>
                         <div>
                             <h2 class="payment-panel-title">Pilih tagihan</h2>
-                            <p class="payment-panel-context">{{ $studentSummary['belum_lunas'] }} tagihan masih perlu dibayar</p>
+                                <p class="payment-panel-context">
+                                    {{ $studentSummary['belum_lunas'] }} tagihan masih perlu dibayar
+                                    @if($studentSummary['tidak_aktif'] > 0)
+                                        &middot; {{ $studentSummary['tidak_aktif'] }} tidak aktif dan tidak dihitung
+                                    @endif
+                                </p>
                         </div>
                     </div>
                 </div>
@@ -1815,7 +1916,7 @@
                             <input class="payment-check" id="selectAllBills" type="checkbox">
                             <span>Pilih semua tagihan belum lunas</span>
                         </label>
-                        <span class="payment-selection-hint"><i class="fas fa-lock" aria-hidden="true"></i>Tagihan lunas tidak dapat dipilih kembali.</span>
+                            <span class="payment-selection-hint"><i class="fas fa-lock" aria-hidden="true"></i>Tagihan lunas atau tidak aktif tidak dapat dipilih.</span>
                     </div>
 
                     <div class="payment-summary-bar">
@@ -1846,7 +1947,8 @@
                                     $groupId = 'payment-group-' . $loop->index;
                                     $groupOpen = $loop->index === $defaultOpenGroup;
                                     $outstandingMonths = collect($tagihan['bulan_tagihan'])
-                                        ->filter(fn ($bulan) => (float) $bulan['sisa_bayar'] > 0);
+                                        ->filter(fn ($bulan) => ($bulan['is_active'] ?? true) && (float) $bulan['sisa_bayar'] > 0);
+                                    $inactiveMonths = collect($tagihan['bulan_tagihan'])->where('is_active', false)->count();
                                 @endphp
                                 <article class="payment-group {{ $groupOpen ? 'is-open' : '' }}" data-payment-group>
                                     <header class="payment-group-header">
@@ -1866,6 +1968,9 @@
                                                     <span>
                                                         {{ count($tagihan['bulan_tagihan']) }} periode
                                                         &middot; Tahun ajaran {{ $tagihan['academic_year_label'] }}
+                                                        @if($inactiveMonths > 0)
+                                                            &middot; {{ $inactiveMonths }} tidak aktif
+                                                        @endif
                                                     </span>
                                                     <span class="payment-row-kind is-expandable">
                                                         <i class="fas fa-table-list" aria-hidden="true"></i>
@@ -1886,6 +1991,8 @@
                                                     <input class="payment-group-check" type="checkbox" data-select-group="{{ $groupId }}">
                                                     <span>Pilih grup</span>
                                                 </label>
+                                            @elseif($tagihan['status'] === 'tidak_aktif')
+                                                <span class="payment-status is-inactive">Tidak aktif</span>
                                             @else
                                                 <span class="payment-status is-paid">Lunas</span>
                                             @endif
@@ -1902,6 +2009,7 @@
                                                 <col class="payment-col-paid">
                                                 <col class="payment-col-remaining">
                                                 <col class="payment-col-status">
+                                                <col class="payment-col-action">
                                             </colgroup>
                                             <thead>
                                                 <tr>
@@ -1912,16 +2020,19 @@
                                                     <th>Dibayar</th>
                                                     <th>Sisa</th>
                                                     <th>Status</th>
+                                                    <th>Aksi</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @foreach($tagihan['bulan_tagihan'] as $bulan)
                                                     @php
-                                                        $monthOutstanding = (float) $bulan['sisa_bayar'] > 0;
+                                                        $monthIsActive = (bool) ($bulan['is_active'] ?? true);
+                                                        $monthOutstanding = $monthIsActive && (float) $bulan['sisa_bayar'] > 0;
                                                         $monthDueOutstanding = (float) ($bulan['sisa_terhitung'] ?? $bulan['sisa_bayar']) > 0;
                                                         $monthNominal = (float) $bulan['nominal'];
                                                         $monthPaid = (float) $bulan['total_bayar'];
                                                         [$monthStatusLabel, $monthStatusClass] = match($bulan['status']) {
+                                                            'tidak_aktif' => ['Tidak aktif', 'is-inactive'],
                                                             'lunas' => ['Lunas', 'is-paid'],
                                                             'belum_jatuh_tempo' => ['Belum jatuh tempo', 'is-upcoming'],
                                                             'sebagian' => ['Sebagian', 'is-partial'],
@@ -1934,7 +2045,7 @@
                                                             ? \Carbon\Carbon::parse($bulan['tanggal_jatuh_tempo'])
                                                             : null;
                                                     @endphp
-                                                    <tr>
+                                                    <tr class="{{ $monthIsActive ? '' : 'payment-row-inactive' }}">
                                                         <td class="payment-bill-check-cell">
                                                             @if($monthOutstanding)
                                                                 <input
@@ -1945,9 +2056,10 @@
                                                                     data-name="{{ $tagihan['nama_tagihan'] }} · {{ $bulan['periode_display'] ?? $bulan['periode'] }}"
                                                                     data-nominal="{{ (float) $bulan['sisa_bayar'] }}"
                                                                     data-periode="{{ $dueDate?->format('Y-m') }}"
+                                                                    data-deadline="{{ $dueDate?->format('Y-m-d') }}"
                                                                     data-is-spp="{{ str_contains(strtolower($tagihan['nama_tagihan']), 'spp') ? 'true' : 'false' }}"
                                                                 >
-                                                            @else
+                                                            @elseif($monthIsActive)
                                                                 <i class="fas fa-check" style="color:#12a06a;font-size:9px"></i>
                                                             @endif
                                                         </td>
@@ -1965,6 +2077,22 @@
                                                         <td data-label="Sisa"><span class="payment-money {{ $monthDueOutstanding ? 'is-remaining' : '' }}">{{ $formatRupiah(max(0, $bulan['sisa_terhitung'] ?? $bulan['sisa_bayar'])) }}</span></td>
                                                         <td data-label="Status">
                                                             <span class="payment-status {{ $monthStatusClass }}">{{ $monthStatusLabel }}</span>
+                                                        </td>
+                                                        <td class="payment-bill-action-cell" data-label="Aksi">
+                                                            @if($canGenerate)
+                                                                <form class="payment-activation-form" method="POST" action="{{ route('tagihan.toggle-active', $bulan['id']) }}" data-confirm-title="Konfirmasi status tagihan" data-confirm-message="{{ $monthIsActive ? 'Nonaktifkan tagihan ini? Nominalnya tidak akan dihitung.' : 'Aktifkan kembali tagihan ini?' }}" data-confirm-label="{{ $monthIsActive ? 'Nonaktifkan' : 'Aktifkan' }}" data-confirm-tone="warning">
+                                                                    @csrf
+                                                                    @method('PATCH')
+                                                                    <button
+                                                                        class="payment-activation-button {{ $monthIsActive ? '' : 'is-inactive' }}"
+                                                                        type="submit"
+                                                                        title="{{ $monthIsActive ? 'Nonaktifkan tagihan' : 'Aktifkan tagihan' }}"
+                                                                        aria-label="{{ $monthIsActive ? 'Nonaktifkan tagihan ' : 'Aktifkan tagihan ' }}{{ $bulan['periode_display'] ?? $bulan['periode'] }}"
+                                                                    >
+                                                                        <i class="fas {{ $monthIsActive ? 'fa-power-off' : 'fa-rotate-left' }}" aria-hidden="true"></i>
+                                                                    </button>
+                                                                </form>
+                                                            @endif
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -2001,14 +2129,17 @@
                                         <span><i class="fas fa-wallet payment-column-icon"></i>Dibayar</span>
                                         <span><i class="fas fa-layer-group payment-column-icon"></i>Sisa</span>
                                         <span><i class="fas fa-signal payment-column-icon"></i>Status</span>
+                                        <span>Aksi</span>
                                     </div>
                                     @foreach($singleTagihanList as $tagihan)
                                 @php
-                                    $billOutstanding = (float) $tagihan['sisa_bayar'] > 0;
+                                    $billIsActive = (bool) ($tagihan['is_active'] ?? true);
+                                    $billOutstanding = $billIsActive && (float) $tagihan['sisa_bayar'] > 0;
                                     $billDueOutstanding = (float) ($tagihan['sisa_terhitung'] ?? $tagihan['sisa_bayar']) > 0;
                                     $billNominal = (float) $tagihan['nominal'];
                                     $billPaid = max(0, $billNominal - (float) $tagihan['sisa_bayar']);
                                     [$billStatusLabel, $billStatusClass] = match($tagihan['status']) {
+                                        'tidak_aktif' => ['Tidak aktif', 'is-inactive'],
                                         'lunas' => ['Lunas', 'is-paid'],
                                         'belum_jatuh_tempo' => ['Belum jatuh tempo', 'is-upcoming'],
                                         'sebagian' => ['Sebagian', 'is-partial'],
@@ -2018,7 +2149,7 @@
                                         ? min(100, (int) round(($billPaid / $billNominal) * 100))
                                         : 0;
                                 @endphp
-                                <article class="payment-single payment-single-grid">
+                                <article class="payment-single payment-single-grid {{ $billIsActive ? '' : 'is-inactive' }}">
                                     <div class="payment-single-check">
                                         @if($billOutstanding)
                                             <input
@@ -2030,7 +2161,7 @@
                                                 data-periode=""
                                                 data-is-spp="false"
                                             >
-                                        @else
+                                        @elseif($billIsActive)
                                             <i class="fas fa-check" style="color:#12a06a;font-size:9px"></i>
                                         @endif
                                     </div>
@@ -2068,6 +2199,23 @@
                                     <div>
                                         <span class="payment-single-label">Status</span>
                                         <span class="payment-status {{ $billStatusClass }}">{{ $billStatusLabel }}</span>
+                                    </div>
+                                    <div class="payment-single-action">
+                                        <span class="payment-single-label">Aksi</span>
+                                        @if($canGenerate)
+                                            <form class="payment-activation-form" method="POST" action="{{ route('tagihan.toggle-active', $tagihan['id']) }}" data-confirm-title="Konfirmasi status tagihan" data-confirm-message="{{ $billIsActive ? 'Nonaktifkan tagihan ini? Nominalnya tidak akan dihitung.' : 'Aktifkan kembali tagihan ini?' }}" data-confirm-label="{{ $billIsActive ? 'Nonaktifkan' : 'Aktifkan' }}" data-confirm-tone="warning">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button
+                                                    class="payment-activation-button {{ $billIsActive ? '' : 'is-inactive' }}"
+                                                    type="submit"
+                                                    title="{{ $billIsActive ? 'Nonaktifkan tagihan' : 'Aktifkan tagihan' }}"
+                                                    aria-label="{{ $billIsActive ? 'Nonaktifkan tagihan ' : 'Aktifkan tagihan ' }}{{ $tagihan['nama_tagihan'] }}"
+                                                >
+                                                    <i class="fas {{ $billIsActive ? 'fa-power-off' : 'fa-rotate-left' }}" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </article>
                                     @endforeach
@@ -2212,6 +2360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentDate = document.getElementById('paymentDate');
     const paymentForm = document.getElementById('multiPaymentForm');
     const submitButton = document.getElementById('submitPaymentButton');
+    const sppDiscount = @json($sppDiscountConfig);
 
     const currency = (amount) => 'Rp' + Number(amount || 0).toLocaleString('id-ID');
     const escapeHtml = (value) => String(value)
@@ -2316,35 +2465,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const info = row.querySelector('[data-discount-info]');
         const isSpp = row.dataset.isSpp === 'true';
         const period = row.dataset.period;
+        const billDeadline = row.dataset.deadline;
         const original = Number(row.dataset.originalAmount || 0);
 
         resetDiscount(row);
         info.className = 'payment-discount-info';
         info.innerHTML = '';
 
-        if (!isSpp || !period || !paymentDate?.value) {
+        if (!isSpp || !sppDiscount.active || Number(sppDiscount.amount) <= 0 || !paymentDate?.value) {
             validateAmount(input);
             updateCashTotal();
             return;
         }
 
         const paidAt = new Date(paymentDate.value + 'T00:00:00');
-        const periodDate = new Date(period + '-01T00:00:00');
-        const deadline = new Date(periodDate.getFullYear(), periodDate.getMonth(), 10);
-        const discount = Math.min(25000, original);
+        let isWithinPeriod = false;
+        let periodMessage = '';
+
+        if (sppDiscount.custom_period) {
+            const validFrom = new Date(sppDiscount.valid_from + 'T00:00:00');
+            const validUntil = new Date(sppDiscount.valid_until + 'T00:00:00');
+            isWithinPeriod = paidAt >= validFrom && paidAt <= validUntil;
+            periodMessage = `pada periode ${validFrom.toLocaleDateString('id-ID')}–${validUntil.toLocaleDateString('id-ID')}`;
+        } else if (billDeadline || period) {
+            const deadline = billDeadline
+                ? new Date(billDeadline + 'T00:00:00')
+                : new Date(period + '-10T00:00:00');
+            isWithinPeriod = paidAt <= deadline;
+            periodMessage = `sampai ${deadline.toLocaleDateString('id-ID')}`;
+        }
+
+        const discount = Math.min(Number(sppDiscount.amount), original);
         const discountedAmount = Math.max(0, original - discount);
         const amount = paymentAmount(input);
 
-        if (paidAt <= deadline && (amount === original || amount === discountedAmount)) {
+        if (isWithinPeriod && (amount === original || amount === discountedAmount)) {
             input.value = discountedAmount;
             window.PermataRupiah?.refresh(input);
             row.querySelector('[data-discount-amount]').value = discount;
             row.querySelector('[data-has-discount]').value = 'true';
             info.classList.add('is-visible');
             info.innerHTML = `<i class="fas fa-tag"></i><span>Diskon ${currency(discount)} diterapkan. Tagihan lunas dengan pembayaran ${currency(discountedAmount)}.</span>`;
-        } else if (paidAt <= deadline) {
+        } else if (isWithinPeriod) {
             info.classList.add('is-visible', 'is-warning');
-            info.innerHTML = `<i class="fas fa-circle-info"></i><span>Diskon ${currency(discount)} tersedia hanya untuk pembayaran lunas sebelum tanggal 10.</span>`;
+            info.innerHTML = `<i class="fas fa-circle-info"></i><span>Diskon ${currency(discount)} tersedia untuk pelunasan penuh ${periodMessage}.</span>`;
         }
 
         validateAmount(input);
@@ -2363,7 +2527,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const amount = Number(checkbox.dataset.nominal || 0);
 
             return `
-                <article class="payment-selected-item" data-payment-row data-bill-id="${id}" data-is-spp="${checkbox.dataset.isSpp}" data-period="${escapeHtml(checkbox.dataset.periode || '')}" data-original-amount="${amount}">
+                <article class="payment-selected-item" data-payment-row data-bill-id="${id}" data-is-spp="${checkbox.dataset.isSpp}" data-period="${escapeHtml(checkbox.dataset.periode || '')}" data-deadline="${escapeHtml(checkbox.dataset.deadline || '')}" data-original-amount="${amount}">
                     <div class="payment-selected-main">
                         <span class="payment-selected-icon"><i class="fas fa-file-invoice"></i></span>
                         <span class="payment-selected-copy">
@@ -2418,7 +2582,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     paymentDate?.addEventListener('change', recalculateAllDiscounts);
 
-    paymentForm?.addEventListener('submit', (event) => {
+    paymentForm?.addEventListener('submit', async (event) => {
         const inputs = [...paymentForm.querySelectorAll('.payment-amount-input')];
         const valid = inputs.every(validateAmount);
         const total = inputs.reduce((sum, input) => sum + paymentAmount(input), 0);
@@ -2429,13 +2593,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!window.confirm(`Konfirmasi pembayaran sebesar ${currency(total)}?`)) {
-            event.preventDefault();
+        if (paymentForm.dataset.paymentConfirmed === 'true') {
+            delete paymentForm.dataset.paymentConfirmed;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Memproses...</span>';
             return;
         }
 
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Memproses...</span>';
+        event.preventDefault();
+        const confirmed = await window.appConfirm({
+            title: 'Konfirmasi pembayaran',
+            message: `Pastikan data pembayaran sudah benar. Total yang akan diterima sebesar ${currency(total)}.`,
+            confirmText: 'Proses pembayaran',
+            tone: 'success',
+        });
+        if (!confirmed) return;
+
+        paymentForm.dataset.paymentConfirmed = 'true';
+        paymentForm.requestSubmit(submitButton);
     });
 
     const generateForm = document.getElementById('generateStudentForm');

@@ -895,12 +895,6 @@
                 </div>
 
                 <div class="billing-heading-actions">
-                    @if($canViewHistory)
-                        <a class="billing-button" href="{{ route('riwayat.index') }}">
-                            <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
-                            <span>Riwayat pembayaran</span>
-                        </a>
-                    @endif
                     @if($canGenerate)
                         <button class="billing-button is-primary" type="button" data-bs-toggle="modal" data-bs-target="#generateModal">
                             <i class="fas fa-file-circle-plus" aria-hidden="true"></i>
@@ -909,6 +903,8 @@
                     @endif
                 </div>
             </header>
+
+            @include('partials.transaction-tabs', ['module' => 'sekolah', 'active' => 'data'])
 
             <section class="billing-stats" aria-label="Ringkasan tagihan kelas">
                 <article class="billing-stat">
@@ -920,7 +916,7 @@
                     <span class="billing-stat-note">{{ $selectedContext }}</span>
                 </article>
 
-                <article class="billing-stat is-amber">
+                <article class="billing-stat is-amber is-nominal-summary">
                     <div class="billing-stat-main">
                         <span class="billing-stat-icon"><i class="fas fa-file-invoice"></i></span>
                         <span class="billing-stat-label">Total tagihan</span>
@@ -1083,8 +1079,8 @@
                                             <span class="billing-status {{ $statusClass }}">{{ $statusLabel }}</span>
                                         </td>
                                         <td data-label="Tagihan">{{ number_format($student['total_tagihan'], 0, ',', '.') }}</td>
-                                        <td data-label="Total nominal"><span class="billing-money">{{ $formatRupiah($student['total_nominal']) }}</span></td>
-                                        <td data-label="Dibayar"><span class="billing-money">{{ $formatRupiah($student['total_dibayar']) }}</span></td>
+                                        <td data-label="Total nominal"><span class="billing-money is-nominal">{{ $formatRupiah($student['total_nominal']) }}</span></td>
+                                        <td data-label="Dibayar"><span class="billing-money is-paid">{{ $formatRupiah($student['total_dibayar']) }}</span></td>
                                         <td data-label="Sisa">
                                             <span class="billing-money {{ $student['sisa_bayar'] > 0 ? 'is-remaining' : 'is-zero' }}">
                                                 {{ $formatRupiah($student['sisa_bayar']) }}
@@ -1093,7 +1089,7 @@
                                         <td class="billing-action-cell" data-label="Aksi">
                                             <div class="billing-row-actions">
                                                 @if($student['total_tagihan'] === 0 && $canGenerate)
-                                                    <form method="POST" action="{{ route('tagihan.generate.manual.siswa', $student['id']) }}" data-single-generate-form>
+                                                    <form method="POST" action="{{ route('tagihan.generate.manual.siswa', $student['id']) }}" data-single-generate-form data-confirm-title="Buat tagihan siswa" data-confirm-message="Buat tagihan untuk {{ $student['nama'] }} sekarang?" data-confirm-label="Buat tagihan" data-confirm-tone="success">
                                                         @csrf
                                                         <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTahunAjaran?->id }}">
                                                         <button class="billing-row-action" type="submit">
@@ -1175,7 +1171,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="billing-button" data-bs-dismiss="modal">Batal</button>
-                    <form id="generateAllBillsForm" action="{{ route('tagihan.generate.manual') }}" method="POST">
+                    <form id="generateAllBillsForm" action="{{ route('tagihan.generate.manual') }}" method="POST" data-confirm-title="Buat tagihan siswa" data-confirm-message="Buat tagihan untuk seluruh siswa sesuai pilihan periode dan jenis pembayaran?" data-confirm-label="Buat semua tagihan" data-confirm-tone="success">
                         @csrf
                         <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTahunAjaran?->id }}">
                         <button class="billing-button is-primary" id="generateAllBillsButton" type="submit">
@@ -1245,14 +1241,6 @@ document.addEventListener('DOMContentLoaded', () => {
             activeStatus = button.dataset.billingFilter;
             filterButtons.forEach((item) => item.classList.toggle('is-active', item === button));
             filterRows();
-        });
-    });
-
-    document.querySelectorAll('[data-single-generate-form]').forEach((form) => {
-        form.addEventListener('submit', (event) => {
-            if (!window.confirm('Buat tagihan untuk siswa ini sekarang?')) {
-                event.preventDefault();
-            }
         });
     });
 

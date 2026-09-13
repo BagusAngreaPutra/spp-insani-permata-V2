@@ -21,12 +21,14 @@ class Tagihan extends Model
         'tipe',
         'periode',
         'tanggal_jatuh_tempo',
-        'status'
+        'status',
+        'is_active',
     ];
 
     protected $casts = [
         'nominal' => 'decimal:2',
         'tanggal_jatuh_tempo' => 'date',
+        'is_active' => 'boolean',
     ];
 
     // Relasi
@@ -108,6 +110,11 @@ class Tagihan extends Model
     public function scopeLunas($query)
     {
         return $query->where('status', 'lunas');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 
     public function isBelumJatuhTempo(): bool

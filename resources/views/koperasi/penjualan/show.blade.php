@@ -127,7 +127,7 @@
             <div class="actions">
                 <a href="{{ route('koperasi.penjualan.index') }}" class="btn-back">Kembali</a>
                 <a href="{{ route('koperasi.penjualan.kwitansi', $penjualan->id) }}" target="_blank" class="btn-print">Cetak Kwitansi</a>
-                <form action="{{ route('koperasi.penjualan.destroy', $penjualan->id) }}" method="POST" onsubmit="return confirm('Batalkan transaksi ini dan kembalikan stok?')">
+                <form action="{{ route('koperasi.penjualan.destroy', $penjualan->id) }}" method="POST" data-confirm-title="Batalkan transaksi koperasi" data-confirm-message="Transaksi ini akan dibatalkan dan stok barang dikembalikan." data-confirm-label="Batalkan transaksi" data-confirm-tone="danger">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn-delete">Batalkan Transaksi</button>

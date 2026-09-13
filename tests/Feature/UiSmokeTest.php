@@ -6,6 +6,7 @@ use App\Http\Controllers\TagihanController;
 use App\Models\Admin;
 use App\Models\Kelas;
 use App\Models\Pembayaran;
+use App\Models\Pemasukan;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -33,7 +34,14 @@ class UiSmokeTest extends TestCase
             ->assertSee('Permata Insani')
             ->assertSee('Ringkasan')
             ->assertSee('Cari menu')
-            ->assertSee('Pusat laporan')
+            ->assertSeeInOrder([
+                '<span>Pemasukan</span>',
+                '<span>Tagihan Siswa</span>',
+                '<span>Koperasi</span>',
+                '<span>Pemasukan Lainnya</span>',
+            ], false)
+            ->assertSee('Semua Transaksi')
+            ->assertSee('Laporan Transaksi')
             ->assertSee('fa-school', false)
             ->assertSee('fa-file-import', false)
             ->assertSee('app-sidebar-footer', false);
@@ -64,18 +72,10 @@ class UiSmokeTest extends TestCase
             'import.form',
             'export_excel.index',
             'backup.index',
-            'laporan.pembayaran',
+            'laporan.tagihan_siswa',
             'laporan.pemasukan',
-            'laporan.pengeluaran',
-            'laporan.siswa',
-            'laporan.kelas',
-            'laporan.sekolah',
-            'laporan.admin',
-            'laporan.jenis_pembayaran',
-            'laporan.kenaikan',
-            'laporan.kelulusan',
             'laporan.koperasi',
-            'laporan.tahun_ajaran',
+            'laporan.transaksi',
         ];
 
         foreach ($routes as $routeName) {
@@ -189,11 +189,17 @@ class UiSmokeTest extends TestCase
             ->assertSee('Semua sekolah')
             ->assertSee('Semua kelas')
             ->assertSee('Semua transaksi')
+            ->assertSee('Tagihan siswa')
+            ->assertSee('Koperasi')
+            ->assertSee('Pemasukan lainnya')
             ->assertSee('Cari transaksi')
             ->assertSee('Rincian tagihan')
             ->assertSee('history-filter-form', false)
             ->assertSee('history-list-head', false)
-            ->assertSee('history-row-summary', false);
+            ->assertSee('history-row-summary', false)
+            ->assertSee('history-summary-type is-school', false)
+            ->assertSee('history-summary-type is-cooperative', false)
+            ->assertSee('history-summary-type is-income', false);
 
         $this->assertCount(Kelas::query()->count(), $response->viewData('kelasList'));
         $this->assertInstanceOf(LengthAwarePaginator::class, $response->viewData('transaksi'));
@@ -226,6 +232,31 @@ class UiSmokeTest extends TestCase
         $this->get(route('riwayat.index', [
             'end_date' => $payment->tanggal_bayar->format('Y-m-d'),
         ]))->assertOk();
+
+        $income = Pemasukan::create([
+            'sekolah_id' => $payment->siswa->id_sekolah,
+            'tanggal' => now()->toDateString(),
+            'jumlah' => 125000,
+            'sumber' => 'Pemasukan uji riwayat',
+            'keterangan' => 'Memastikan pemasukan lainnya tampil di riwayat transaksi.',
+        ]);
+        $incomeResponse = $this->get(route('riwayat.index', [
+            'jenis_pembayaran' => 'pemasukan',
+            'sekolah_id' => $income->sekolah_id,
+            'search' => 'PM-' . $income->id,
+        ]));
+
+        $incomeResponse
+            ->assertOk()
+            ->assertSee('Pemasukan Lainnya')
+            ->assertSee('history-row is-income', false);
+
+        $this->assertCount(1, $incomeResponse->viewData('transaksi')->items());
+        foreach ($incomeResponse->viewData('transaksi')->items() as $transaction) {
+            $this->assertSame('pemasukan', $transaction['source_type']);
+            $this->assertSame($income->sekolah_id, $transaction['sekolah']->id);
+            $this->assertNull($transaction['siswa']);
+        }
     }
 
     public function test_active_tagihan_flow_uses_the_redesigned_pages(): void

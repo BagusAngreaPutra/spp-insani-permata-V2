@@ -118,7 +118,8 @@
         color: #374151;
     }
     
-    .form-group select {
+    .form-group select,
+    .form-group input {
         width: 100%;
         padding: 0.75rem;
         border-radius: 12px;
@@ -155,6 +156,24 @@
     .reset-btn:hover {
         background: #e5e7eb;
     }
+
+    .income-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .income-summary-item {
+        padding: 1.25rem;
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        border: 1px solid #bbf7d0;
+        border-radius: 14px;
+    }
+
+    .income-summary-item span { display: block; color: #166534; font-size: .82rem; font-weight: 700; }
+    .income-summary-item strong { display: block; margin-top: .4rem; color: #14532d; font-size: 1.25rem; }
+    .report-pagination { margin-top: 1rem; }
 
     /* ====== STYLE KHUSUS CETAK ====== */
     @media print {
@@ -294,17 +313,17 @@
         <div class="tanggal-laporan d-none d-print-block">
             Tanggal Laporan: {{ $tanggalLaporan }}
         </div>
-        <h3 class="print-title d-none d-print-block">LAPORAN DATA PEMASUKAN</h3>
+        <h3 class="print-title d-none d-print-block">LAPORAN PEMASUKAN LAINNYA</h3>
 
         <div class="page-header no-print">
             <h2 class="page-title">
-                <i class="fas fa-money-bill-wave"></i> Laporan pemasukan
+                <i class="fas fa-money-bill-wave"></i> Laporan Pemasukan Lainnya
             </h2>
             <div>
                 <button onclick="window.print()" class="btn-primary">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <a href="{{ route('laporan.pemasukan.excel') }}" class="btn-primary">Download Excel</a>
+                <a href="{{ route('laporan.pemasukan.excel', request()->query()) }}" class="btn-primary">Download Excel</a>
             </div>
         </div>
 
@@ -322,6 +341,21 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="search">Cari sumber atau keterangan</label>
+                <input type="search" name="search" id="search" value="{{ request('search') }}" placeholder="Sumber, keterangan, atau sekolah...">
+            </div>
+
+            <div class="form-group">
+                <label for="tanggal_mulai">Tanggal mulai</label>
+                <input type="date" name="tanggal_mulai" id="tanggal_mulai" value="{{ request('tanggal_mulai') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="tanggal_selesai">Tanggal selesai</label>
+                <input type="date" name="tanggal_selesai" id="tanggal_selesai" value="{{ request('tanggal_selesai') }}" min="{{ request('tanggal_mulai') }}">
+            </div>
+
             <button type="submit" class="filter-btn">
                 <i class="fas fa-filter"></i> Tampilkan Data
             </button>
@@ -330,6 +364,25 @@
                 <i class="fas fa-redo"></i> Reset
             </a>
         </form>
+
+        <section class="income-summary" aria-label="Ringkasan pemasukan lainnya">
+            <div class="income-summary-item">
+                <span>Jumlah Transaksi</span>
+                <strong>{{ number_format($reportSummary['transactions'], 0, ',', '.') }}</strong>
+            </div>
+            <div class="income-summary-item">
+                <span>Sumber Pemasukan</span>
+                <strong>{{ number_format($reportSummary['sources'], 0, ',', '.') }}</strong>
+            </div>
+            <div class="income-summary-item">
+                <span>Total Pemasukan</span>
+                <strong>Rp {{ number_format($reportSummary['total'], 0, ',', '.') }}</strong>
+            </div>
+            <div class="income-summary-item">
+                <span>Rata-rata Transaksi</span>
+                <strong>Rp {{ number_format($reportSummary['average'], 0, ',', '.') }}</strong>
+            </div>
+        </section>
 
         <div class="table-container">
             <table class="modern-table">
@@ -344,18 +397,32 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($pemasukans as $i => $p)
+                    @forelse($pemasukans as $p)
                         <tr>
-                            <td>{{ $i+1 }}</td>
-                            <td>{{ $p->tanggal }}</td>
-                            <td>Rp {{ number_format($p->jumlah, 2, ',', '.') }}</td>
+                            <td>{{ $pemasukans->firstItem() + $loop->index }}</td>
+                            <td>{{ optional($p->tanggal)->format('d/m/Y') }}</td>
+                            <td><strong>Rp {{ number_format($p->jumlah, 0, ',', '.') }}</strong></td>
                             <td>{{ $p->sumber ?? '-' }}</td>
                             <td>{{ $p->keterangan ?? '-' }}</td>
                             <td>{{ $p->sekolah->nama_sekolah ?? '-' }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr><td colspan="6" style="padding:2rem;text-align:center;color:#64748b">Belum ada pemasukan untuk filter yang dipilih.</td></tr>
+                    @endforelse
                 </tbody>
+                @if($pemasukans->isNotEmpty())
+                    <tfoot>
+                        <tr>
+                            <th colspan="2" style="text-align:right">Total</th>
+                            <th>Rp {{ number_format($reportSummary['total'], 0, ',', '.') }}</th>
+                            <th colspan="3"></th>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
+            @if($pemasukans->hasPages())
+                <div class="report-pagination no-print">{{ $pemasukans->links() }}</div>
+            @endif
         </div>
         
         <!-- Footer untuk cetak -->

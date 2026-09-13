@@ -236,6 +236,18 @@
                     <div class="summary-label">Total Penjualan</div>
                     <div class="summary-value">Rp {{ number_format($totalPenjualan, 0, ',', '.') }}</div>
                 </div>
+                <div class="summary-item">
+                    <div class="summary-label">Siswa Bertransaksi</div>
+                    <div class="summary-value">{{ number_format($totalSiswa, 0, ',', '.') }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Jenis Barang Terjual</div>
+                    <div class="summary-value">{{ number_format($jenisBarangTerjual, 0, ',', '.') }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Rata-rata Transaksi</div>
+                    <div class="summary-value">Rp {{ number_format($rataRataTransaksi, 0, ',', '.') }}</div>
+                </div>
             </div>
         </div>
 
@@ -253,6 +265,7 @@
                     <col class="report-col-items">
                     <col class="report-col-quantity">
                     <col class="report-col-total">
+                    <col>
                 </colgroup>
                 <thead>
                     <tr>
@@ -264,6 +277,7 @@
                         <th>Barang</th>
                         <th>Jumlah Item</th>
                         <th>Total</th>
+                        <th>Catatan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -287,10 +301,11 @@
                             </td>
                             <td>{{ $item->details->sum('jumlah') }}</td>
                             <td>Rp {{ number_format($item->total, 0, ',', '.') }}</td>
+                            <td>{{ $item->catatan ?: '-' }}</td>
                         </tr>
                     @empty
                         <tr class="report-empty-row pi-sort-fixed" data-sort-fixed>
-                            <td colspan="8" class="report-table-empty">
+                            <td colspan="9" class="report-table-empty">
                                 <div class="report-empty-content">
                                     <span class="report-empty-icon" aria-hidden="true">
                                         <i class="fas fa-cart-shopping"></i>

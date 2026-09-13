@@ -444,7 +444,7 @@
                                     <a href="{{ route('siswa.edit', $item->id) }}" class="btn-edit">
                                         <i class="fas fa-edit"></i> Edit
                                     </a>
-                                    <form action="{{ route('siswa.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?')" style="display:inline;">
+                                    <form action="{{ route('siswa.destroy', $item->id) }}" method="POST" style="display:inline;" data-confirm-title="Hapus siswa" data-confirm-message="Data siswa {{ $item->nama }} akan dihapus. Apakah Anda yakin?" data-confirm-label="Hapus" data-confirm-tone="danger">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn-delete">

@@ -72,7 +72,7 @@ class BlackBoxSystemTest extends TestCase
 
         $this->actingAs($admin, 'web')->get(route('sekolah.index'))->assertForbidden();
         $this->actingAs($admin, 'web')->get(route('tagihan.index.grouped'))->assertForbidden();
-        $this->actingAs($admin, 'web')->get(route('laporan.pembayaran'))->assertForbidden();
+        $this->actingAs($admin, 'web')->get(route('laporan.tagihan_siswa'))->assertForbidden();
     }
 
     public function test_required_fields_and_invalid_filter_ranges_are_rejected_without_server_errors(): void
@@ -469,10 +469,8 @@ class BlackBoxSystemTest extends TestCase
 
         foreach ([
             'import.template', 'export_excel.download',
-            'laporan.pembayaran.excel', 'laporan.pemasukan.excel', 'laporan.pengeluaran.excel',
-            'laporan.siswa.excel', 'laporan.kelas.excel', 'laporan.sekolah.excel',
-            'laporan.admin.excel', 'laporan.jenis_pembayaran.excel', 'laporan.kenaikan.excel',
-            'laporan.kelulusan.excel', 'laporan.koperasi.excel', 'laporan.tahun_ajaran.excel',
+            'laporan.tagihan_siswa.excel', 'laporan.pemasukan.excel', 'laporan.koperasi.excel',
+            'laporan.transaksi.excel',
         ] as $routeName) {
             $response = $this->get(route($routeName));
             $this->assertTrue(

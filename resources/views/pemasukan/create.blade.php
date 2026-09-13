@@ -51,6 +51,7 @@
         color: #374151;
         display: block;
         margin-bottom: 0.5rem;
+        margin-top: 1rem;
     }
 
     .form-control {
@@ -61,6 +62,7 @@
         margin-bottom: 1.5rem;
         font-size: 0.95rem;
         transition: border-color 0.3s ease;
+        margin-top: 1rem;
     }
 
     .form-control:focus {
@@ -81,6 +83,8 @@
     .btn {
         display: inline-flex;
         align-items: center;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
         gap: 0.75rem;
         padding: 0.85rem 2rem;
         border-radius: 16px;
@@ -113,6 +117,11 @@
     .btn-secondary:hover {
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
+    }
+
+    .form-actions {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
     }
 </style>
 @endpush
@@ -158,14 +167,14 @@
                 <label class="form-label">Keterangan</label>
                 <textarea name="keterangan" class="form-control" rows="3" placeholder="Opsional">{{ old('keterangan') }}</textarea>
 
-                
-
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Simpan
-                </button>
-                <a href="{{ route('pemasukan.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Batal
-                </a>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Simpan
+                    </button>
+                    <a href="{{ route('pemasukan.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Batal
+                    </a>
+                </div>
             </form>
         </div>
     </div>
