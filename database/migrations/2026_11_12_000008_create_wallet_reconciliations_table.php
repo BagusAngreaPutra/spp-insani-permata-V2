@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('wallet_reconciliations', function (Blueprint $table) {
+        if (!Schema::hasTable('wallet_reconciliations')) {
+            Schema::create('wallet_reconciliations', function (Blueprint $table) {
             $table->id();
             $table->string('provider', 30);
             $table->date('reconciliation_date');
@@ -23,8 +24,13 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['provider', 'reconciliation_date', 'status']);
-            $table->index(['external_reference', 'internal_reference']);
-        });
+                $table->index(['external_reference', 'internal_reference'], 'wallet_recon_ext_int_idx');
+            });
+        } else {
+            Schema::table('wallet_reconciliations', function (Blueprint $table) {
+                $table->index(['external_reference', 'internal_reference'], 'wallet_recon_ext_int_idx');
+            });
+        }
     }
 
     public function down(): void
