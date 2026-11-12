@@ -11,6 +11,7 @@
     $canKenaikan = $adminUser?->hasAnyPermission(['kenaikan.manage', 'kelulusan.manage']) ?? false;
     $canTools = $adminUser?->hasAnyPermission(['tagihan.manage', 'log.view', 'import_excel.manage', 'export_excel.manage', 'backup.manage']) ?? false;
     $canLaporan = $adminUser?->hasPermission('laporan.view') ?? false;
+    $canWallet = $adminUser?->hasPermission('wallet.view') ?? false;
     $adminInitial = strtoupper(substr($adminUser?->nama_admin ?? 'G', 0, 1));
     $adminHomeUrl = $canTagihan
         ? route('tagihan.index.grouped')
@@ -91,6 +92,9 @@
                 @endif
                 @if($adminUser?->hasPermission('keuangan_kas.view'))
                     <a href="{{ route('keuangan.kas.index') }}" class="app-nav-link {{ request()->routeIs('keuangan.kas.*') ? 'is-active' : '' }}" data-nav-item><i class="fas fa-wallet"></i><span>Ringkasan Kas</span></a>
+                @endif
+                @if($canWallet)
+                    <a href="{{ route('wallet.admin.index') }}" class="app-nav-link {{ request()->routeIs('wallet.admin.*') ? 'is-active' : '' }}" data-nav-item><i class="fas fa-wallet"></i><span>Dompet Siswa</span></a>
                 @endif
 
                 @if($canKenaikan)

@@ -30,8 +30,8 @@ Dompet tidak menyediakan transfer antar siswa, tarik tunai, atau pembayaran di l
 - [x] Tahap 6: top up siswa.
 - [x] Tahap 7: pembayaran tagihan dengan wallet.
 - [x] Tahap 8: pembayaran koperasi dengan wallet.
-- [ ] Tahap 9: dashboard siswa.
-- [ ] Tahap 10: dashboard admin dan rekonsiliasi.
+- [x] Tahap 9: dashboard siswa.
+- [x] Tahap 10: dashboard admin dan rekonsiliasi.
 - [ ] Tahap 11: security hardening.
 - [ ] Tahap 12: rekonsiliasi harian.
 - [ ] Tahap 13: uji sandbox dan pilot.
@@ -95,6 +95,14 @@ Migration ini belum mengubah tabel `tagihan`, `pembayaran`, atau `koperasi_penju
 - Koreksi transaksi koperasi yang sudah dibayar dengan dompet ditolak untuk mencegah debit ganda.
 - Pembatalan penjualan koperasi yang dibayar dengan dompet membuat refund ledger.
 - Kolom `wallet_payment_id` ditambahkan ke `koperasi_penjualan` melalui migration `2026_11_12_000009_add_wallet_payment_to_koperasi_penjualan_table.php`.
+
+## Hasil tahap 9 dan 10
+
+- Dashboard siswa menampilkan saldo tersedia, tautan dompet, dan aktivitas pembayaran wallet terbaru.
+- Permission admin `wallet.view` dan `wallet.refund` ditambahkan.
+- Dashboard admin tersedia pada route `wallet.admin.index`.
+- Dashboard admin menampilkan jumlah akun, total saldo, saldo ditahan, top up pending, pembayaran, webhook error, pencarian siswa, dan pagination.
+- Menu Dompet Siswa ditambahkan ke sidebar admin.
 
 ## Aturan eksekusi berikutnya
 

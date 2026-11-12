@@ -102,6 +102,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:web')->group(function () {
+    Route::get('/wallet', [\App\Http\Controllers\WalletAdminController::class, 'index'])->middleware('permission:wallet.view')->name('wallet.admin.index');
     Route::get('/pengaturan/kwitansi', [\App\Http\Controllers\ReceiptSettingController::class, 'edit'])->middleware('permission:tagihan.manage')->name('pengaturan.kwitansi.edit');
     Route::put('/pengaturan/kwitansi', [\App\Http\Controllers\ReceiptSettingController::class, 'update'])->middleware('permission:tagihan.manage')->name('pengaturan.kwitansi.update');
     Route::delete('/pembayaran/{id}', [PembayaranController::class, 'destroy'])->middleware('permission:pembayaran.process')->name('pembayaran.destroy');

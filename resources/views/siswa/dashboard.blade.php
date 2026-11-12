@@ -27,6 +27,10 @@
 
                 <div class="stats-grid">
                     <article class="stat-card">
+                        <div class="stat-header"><div><div class="stat-label">Saldo dompet</div><div class="stat-value">Rp{{ number_format((float) ($wallet->available_balance ?? 0), 0, ',', '.') }}</div></div><div class="stat-icon"><i class="fas fa-wallet"></i></div></div>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('siswa.dompet.index') }}">Buka dompet</a>
+                    </article>
+                    <article class="stat-card">
                         <div class="stat-header">
                             <div>
                                 <div class="stat-label">Total tagihan</div>
@@ -48,6 +52,16 @@
                         <a class="btn btn-outline-primary btn-sm" href="{{ route('siswa.riwayat.index') }}">Lihat riwayat</a>
                     </article>
                 </div>
+
+                <section class="dashboard-card" style="margin-bottom:1.25rem">
+                    <div class="card-content"><h2 class="section-title">Aktivitas dompet terbaru</h2>
+                        @forelse($wallet_payments as $walletPayment)
+                            <div style="display:flex;justify-content:space-between;padding:.65rem 0;border-bottom:1px solid #e2e8f0"><span>{{ ucfirst(str_replace('_', ' ', $walletPayment->source_type)) }}</span><strong>Rp{{ number_format((float) $walletPayment->amount, 0, ',', '.') }}</strong></div>
+                        @empty
+                            <p>Belum ada pembayaran melalui dompet.</p>
+                        @endforelse
+                    </div>
+                </section>
 
                 <section class="dashboard-card">
                     <div class="card-content">

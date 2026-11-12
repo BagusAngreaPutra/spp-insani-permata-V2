@@ -7,11 +7,12 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Tagihan;
 use App\Models\Pembayaran;
 use App\Models\TahunAjaran;
+use App\Services\WalletLedgerService;
 
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(WalletLedgerService $wallets)
     {
         $siswa = Auth::guard('siswa')->user();
         $activeAcademicYearId = TahunAjaran::query()->where('aktif', true)->value('id')
@@ -45,11 +46,18 @@ class DashboardController extends Controller
                                 ->take(5)
                                 ->get();
 
+        $wallet = $wallets->getOrCreateAccount($siswa);
+        $walletPayments = $wallet->payments()->latest('id')->take(5)->get();
+        $walletTopups = $wallet->topups()->latest('id')->take(5)->get();
+
         return view('siswa.dashboard', [
             'total_tagihan'      => $totalTagihan,
             'total_pembayaran'   => $totalPembayaran,
             'tagihan_aktif'      => $tagihanAktif,
             'riwayat_pembayaran' => $riwayatPembayaran,
+            'wallet' => $wallet,
+            'wallet_payments' => $walletPayments,
+            'wallet_topups' => $walletTopups,
         ]);
     }
 }

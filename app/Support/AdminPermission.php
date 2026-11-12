@@ -29,6 +29,10 @@ class AdminPermission
                 'pengeluaran.manage' => 'Kelola Pengeluaran',
                 'keuangan_kas.view' => 'Lihat Keuangan Kas',
             ],
+            'Dompet Digital' => [
+                'wallet.view' => 'Lihat dan pantau dompet siswa',
+                'wallet.refund' => 'Refund transaksi dompet',
+            ],
             'Kenaikan & Kelulusan' => [
                 'kenaikan.manage' => 'Proses Kenaikan Kelas',
                 'kelulusan.manage' => 'Proses Kelulusan Siswa',
