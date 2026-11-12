@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('wallet_topups', function (Blueprint $table) {
             $table->id();
             $table->foreignId('wallet_account_id')->constrained('wallet_accounts')->cascadeOnDelete();
+            $table->foreignId('wallet_journal_id')->nullable()->constrained('wallet_journals')->nullOnDelete();
             $table->string('provider', 30);
             $table->string('reference', 100)->unique();
             $table->string('gateway_payment_id', 150)->nullable()->index();

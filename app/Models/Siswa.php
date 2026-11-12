@@ -105,6 +105,11 @@ class Siswa extends Authenticatable
         return $this->hasMany(Tagihan::class, 'siswa_id');
     }
 
+    public function walletAccount()
+    {
+        return $this->hasOne(WalletAccount::class, 'siswa_id');
+    }
+
     // ✅ Relasi many-to-many ke JenisPembayaran
     public function jenisPembayaran()
     {

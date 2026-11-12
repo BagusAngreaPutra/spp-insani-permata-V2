@@ -24,8 +24,8 @@ Dompet tidak menyediakan transfer antar siswa, tarik tunai, atau pembayaran di l
 
 - [x] Tahap 1: audit sistem pembayaran dan integrasi.
 - [x] Tahap 2: migration database wallet.
-- [ ] Tahap 3: model dan relasi Eloquent.
-- [ ] Tahap 4: `WalletLedgerService`.
+- [x] Tahap 3: model dan relasi Eloquent.
+- [x] Tahap 4: `WalletLedgerService`.
 - [ ] Tahap 5: adapter payment gateway sandbox.
 - [ ] Tahap 6: top up siswa.
 - [ ] Tahap 7: pembayaran tagihan dengan wallet.
@@ -61,6 +61,15 @@ Migration wallet dibuat pada:
 - `2026_11_12_000008_create_wallet_reconciliations_table.php`
 
 Migration ini belum mengubah tabel `tagihan`, `pembayaran`, atau `koperasi_penjualan`.
+
+## Hasil tahap 3 dan 4
+
+- Model dibuat untuk akun wallet, jurnal, entry ledger, top up, pembayaran, hold, event gateway, dan rekonsiliasi.
+- `Siswa` sekarang memiliki relasi `walletAccount`.
+- `WalletLedgerService` menyediakan pembuatan akun, kredit, debit, hold, capture, release, dan refund.
+- Operasi saldo menggunakan database transaction, row lock, nominal minor unit, dan idempotency key.
+- Setiap jurnal posted menghasilkan entry wallet dan entry akun lawan dengan nominal yang sama.
+- Test `tests/Unit/WalletLedgerServiceTest.php` lulus: 2 test, 10 assertions.
 
 ## Aturan eksekusi berikutnya
 

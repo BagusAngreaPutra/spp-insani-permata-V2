@@ -12,6 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('wallet_account_id')->constrained('wallet_accounts')->cascadeOnDelete();
             $table->foreignId('wallet_journal_id')->nullable()->constrained('wallet_journals')->nullOnDelete();
+            $table->foreignId('capture_journal_id')->nullable()->constrained('wallet_journals')->nullOnDelete();
+            $table->foreignId('release_journal_id')->nullable()->constrained('wallet_journals')->nullOnDelete();
             $table->string('hold_reference', 100)->unique();
             $table->decimal('amount', 15, 2);
             $table->string('status', 20)->default('held');
