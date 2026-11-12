@@ -20,7 +20,7 @@ Evaluasi dilakukan setelah checkpoint `906c9b3`.
 2. Suite penuh saat ini menunjukkan 37 test gagal dan 53 lulus. Sebagian besar kegagalan berasal dari test lama yang tidak memiliki tabel dasar `admin` atau `siswa` pada SQLite testing. Ini adalah masalah setup test database yang perlu diperbaiki sebelum CI dianggap hijau.
 3. Rekonsiliasi saat ini membandingkan data internal dan keberadaan referensi gateway. Belum ada import laporan settlement gateway atau pengambilan statement otomatis. Fitur itu diperlukan untuk rekonsiliasi finansial production.
 4. Permission `wallet.refund` sudah tersedia, tetapi belum ada halaman admin untuk refund manual. Refund yang sudah tersedia berasal dari pembatalan transaksi koperasi.
-5. Implementasi provider nyata saat ini Midtrans Snap. Xendit baru berada pada rancangan, belum menjadi driver kode.
+5. Implementasi provider nyata sekarang mencakup Midtrans Snap dan Xendit Payment Request v3. Credential sandbox tetap harus dikonfigurasi dan diuji.
 6. Uji sandbox gateway nyata belum dilakukan karena credential dan endpoint webhook production belum dikonfigurasi.
 
 ## Urutan validasi sebelum pilot

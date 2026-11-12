@@ -41,4 +41,9 @@ return [
         'base_url' => env('MIDTRANS_BASE_URL', 'https://app.sandbox.midtrans.com'),
     ],
 
+    'xendit' => [
+        'secret_key' => env('XENDIT_SECRET_KEY'),
+        'webhook_token' => env('XENDIT_WEBHOOK_TOKEN'),
+    ],
+
 ];
