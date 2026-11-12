@@ -31,6 +31,8 @@ use App\Http\Controllers\Laporan\LaporanKoperasiController;
 use App\Http\Controllers\Laporan\LaporanTransaksiController;
 use App\Http\Controllers\KelulusanKelasController;
 use App\Http\Controllers\SppDiscountSettingController;
+use App\Http\Controllers\PaymentGatewayWebhookController;
+use App\Http\Controllers\Siswa\WalletTopupController;
 
 
 
@@ -59,12 +61,19 @@ Route::get('/dashboard', [SiswaDashboardController::class, 'index'])
         ->name('siswa.dashboard');
 });
 Route::prefix('siswa')->middleware('auth:siswa')->group(function () {
+    Route::get('/dompet', [WalletTopupController::class, 'index'])->name('siswa.dompet.index');
+    Route::post('/dompet/topup', [WalletTopupController::class, 'store'])->name('siswa.dompet.topup.store');
+    Route::get('/dompet/topup/{topup}', [WalletTopupController::class, 'show'])->name('siswa.dompet.topup.show');
     Route::get('/tagihan', [TagihanSiswaController::class, 'index'])->name('siswa.tagihan.index');
     Route::get('/riwayat-pembayaran', [RiwayatPembayaranController::class, 'index'])->name('siswa.riwayat.index');
     Route::get('/profil', [ProfileSiswaController::class, 'index'])->name('siswa.profil.index');
     Route::get('/profil/edit-password', [ProfileSiswaController::class, 'editPassword'])->name('siswa.profil.editPassword');
     Route::put('/profil/update-password', [ProfileSiswaController::class, 'updatePassword'])->name('siswa.profil.updatePassword');
 });
+
+Route::post('/webhooks/payment-gateway/{provider}', PaymentGatewayWebhookController::class)
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->name('payment-gateway.webhook');
 
 
 /*

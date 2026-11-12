@@ -19,6 +19,9 @@
         <a href="{{ route('siswa.tagihan.index') }}" class="app-nav-link {{ request()->routeIs('siswa.tagihan.*') ? 'is-active' : '' }}">
             <i class="fas fa-receipt"></i><span>Tagihan</span>
         </a>
+        <a href="{{ route('siswa.dompet.index') }}" class="app-nav-link {{ request()->routeIs('siswa.dompet.*') ? 'is-active' : '' }}">
+            <i class="fas fa-wallet"></i><span>Dompet</span>
+        </a>
         <a href="{{ route('siswa.riwayat.index') }}" class="app-nav-link {{ request()->routeIs('siswa.riwayat.*') ? 'is-active' : '' }}">
             <i class="fas fa-clock-rotate-left"></i><span>Riwayat</span>
         </a>

@@ -31,4 +31,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'payment_gateway' => [
+        'driver' => env('PAYMENT_GATEWAY', env('PAYMENT_GATEWAY_DRIVER', 'fake')),
+    ],
+
+    'midtrans' => [
+        'server_key' => env('MIDTRANS_SERVER_KEY'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY'),
+        'base_url' => env('MIDTRANS_BASE_URL', 'https://app.sandbox.midtrans.com'),
+    ],
+
 ];

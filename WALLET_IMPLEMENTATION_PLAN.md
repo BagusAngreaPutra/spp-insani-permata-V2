@@ -26,8 +26,8 @@ Dompet tidak menyediakan transfer antar siswa, tarik tunai, atau pembayaran di l
 - [x] Tahap 2: migration database wallet.
 - [x] Tahap 3: model dan relasi Eloquent.
 - [x] Tahap 4: `WalletLedgerService`.
-- [ ] Tahap 5: adapter payment gateway sandbox.
-- [ ] Tahap 6: top up siswa.
+- [x] Tahap 5: adapter payment gateway sandbox.
+- [x] Tahap 6: top up siswa.
 - [ ] Tahap 7: pembayaran tagihan dengan wallet.
 - [ ] Tahap 8: pembayaran koperasi dengan wallet.
 - [ ] Tahap 9: dashboard siswa.
@@ -70,6 +70,18 @@ Migration ini belum mengubah tabel `tagihan`, `pembayaran`, atau `koperasi_penju
 - Operasi saldo menggunakan database transaction, row lock, nominal minor unit, dan idempotency key.
 - Setiap jurnal posted menghasilkan entry wallet dan entry akun lawan dengan nominal yang sama.
 - Test `tests/Unit/WalletLedgerServiceTest.php` lulus: 2 test, 10 assertions.
+
+## Hasil tahap 5 dan 6
+
+- Kontrak gateway dibuat pada `app/Contracts/PaymentGateway.php`.
+- DTO pembayaran gateway dibuat pada `app/Data/GatewayPayment.php`.
+- Driver `MidtransGateway` tersedia untuk Snap sandbox dan memverifikasi signature webhook.
+- `FakePaymentGateway` tersedia untuk testing tanpa koneksi vendor.
+- Driver dipilih melalui `PAYMENT_GATEWAY` dan di-resolve melalui `PaymentGatewayManager`.
+- Siswa memiliki halaman dompet dan top up pada route `siswa.dompet.*`.
+- Webhook tersedia pada `POST /webhooks/payment-gateway/{provider}`.
+- Webhook memeriksa signature, nominal, status, event idempotency, dan hanya mengkredit saldo satu kali.
+- Top up sukses membuat jurnal kredit melalui `WalletLedgerService`.
 
 ## Aturan eksekusi berikutnya
 
