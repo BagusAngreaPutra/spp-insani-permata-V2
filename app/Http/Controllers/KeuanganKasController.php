@@ -18,8 +18,8 @@ class KeuanganKasController extends Controller
         $sekolah = Sekolah::all();
 
         $data = $sekolah->map(function ($s) {
-            $totalPembayaranSiswa = Pembayaran::whereHas('tagihan', function ($q) use ($s) {
-                $q->where('sekolah_id', $s->id);
+            $totalPembayaranSiswa = Pembayaran::whereHas('siswa', function ($q) use ($s) {
+                $q->where('id_sekolah', $s->id);
             })->sum('jumlah_bayar');
 
             $totalPemasukanLain = Pemasukan::where('sekolah_id', $s->id)->sum('jumlah');

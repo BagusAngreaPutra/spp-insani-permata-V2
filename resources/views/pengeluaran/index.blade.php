@@ -170,6 +170,7 @@
                         <th>Tanggal</th>
                         <th>Jumlah</th>
                         <th>Keperluan</th>
+                        <th>Catatan</th>
                         <th>Sekolah</th>
                         <th>Aksi</th>
                     </tr>
@@ -181,6 +182,7 @@
                             <td>{{ \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y') }}</td>
                             <td>Rp {{ number_format($item->jumlah, 0, ',', '.') }}</td>
                             <td>{{ $item->keperluan ?? '-' }}</td>
+                            <td>{{ $item->keterangan ?: '-' }}</td>
                             <td>{{ $item->sekolah->nama_sekolah ?? '-' }}</td>
                             <td class="flex gap-2">
                                 <a href="{{ route('pengeluaran.edit', $item->id) }}" class="btn-edit">Edit</a>
@@ -193,7 +195,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center py-4">Belum ada data pengeluaran.</td>
+                            <td colspan="7" class="text-center py-4">Belum ada data pengeluaran.</td>
                         </tr>
                     @endforelse
                 </tbody>

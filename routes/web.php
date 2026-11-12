@@ -91,6 +91,11 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:web')->group(function () {
+    Route::get('/pengaturan/kwitansi', [\App\Http\Controllers\ReceiptSettingController::class, 'edit'])->middleware('permission:tagihan.manage')->name('pengaturan.kwitansi.edit');
+    Route::put('/pengaturan/kwitansi', [\App\Http\Controllers\ReceiptSettingController::class, 'update'])->middleware('permission:tagihan.manage')->name('pengaturan.kwitansi.update');
+    Route::delete('/pembayaran/{id}', [PembayaranController::class, 'destroy'])->middleware('permission:pembayaran.process')->name('pembayaran.destroy');
+    Route::get('/koperasi/penjualan/{id}/edit', [KoperasiPenjualanController::class, 'edit'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.edit');
+    Route::put('/koperasi/penjualan/{id}', [KoperasiPenjualanController::class, 'update'])->middleware('permission:koperasi.penjualan.manage')->name('koperasi.penjualan.update');
     // Profil Admin
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

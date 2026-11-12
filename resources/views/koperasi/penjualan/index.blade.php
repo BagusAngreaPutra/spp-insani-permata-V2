@@ -147,11 +147,8 @@
                                 <div class="koperasi-actions">
                                     <a href="{{ route('koperasi.penjualan.show', $item->id) }}" class="btn-view">Detail</a>
                                     <a href="{{ route('koperasi.penjualan.kwitansi', $item->id) }}" target="_blank" class="btn-view" style="background: linear-gradient(135deg, #25845d, #1d6b4c);">Kwitansi</a>
-                                    <form action="{{ route('koperasi.penjualan.destroy', $item->id) }}" method="POST" data-confirm-title="Batalkan transaksi koperasi" data-confirm-message="Transaksi {{ $item->kode_transaksi }} akan dibatalkan dan stok barang dikembalikan." data-confirm-label="Batalkan transaksi" data-confirm-tone="danger">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn-delete">Batal</button>
-                                    </form>
+                                    <a href="{{ route('koperasi.penjualan.edit', $item->id) }}" class="btn-view">Koreksi</a>
+                                    <a href="{{ route('koperasi.penjualan.show', $item->id) }}" class="btn-delete">Batalkan / Hapus</a>
                                 </div>
                             </td>
                         </tr>

@@ -130,9 +130,9 @@
 </style>
 
 <article class="receipt-document {{ ($clientPdfFallback ?? false) ? 'is-client-pdf-export' : '' }}" data-receipt-document>
-    <table class="receipt-document-header"><tr>
+    <table class="receipt-document-header receipt-table"><tr>
         <td class="receipt-brand-cell">
-            <table class="receipt-brand-table"><tr>
+            <table class="receipt-brand-table receipt-table"><tr>
                 @if($logoData)<td class="receipt-logo-cell"><img class="receipt-logo" src="{{ $logoData }}" alt="Logo Permata Insani"></td>@endif
                 <td class="receipt-brand-copy">
                     <strong>Yayasan Kemilau Permata Insani</strong>
@@ -148,20 +148,20 @@
         </td>
     </tr></table>
 
-    <table class="receipt-meta"><tr>
+    <table class="receipt-meta receipt-table"><tr>
         <td><span class="receipt-label">Tanggal transaksi</span><strong class="receipt-value">{{ $paidAt->locale('id')->translatedFormat('d F Y') }}</strong></td>
         <td><span class="receipt-label">Tanggal kuitansi</span><strong class="receipt-value">{{ $receiptAt->locale('id')->translatedFormat('d F Y') }}</strong></td>
         <td><span class="receipt-label">Metode</span><strong class="receipt-value">{{ $receipt['method'] ?? '-' }}</strong></td>
         <td><span class="receipt-label">Jumlah item</span><strong class="receipt-value">{{ $items->count() }} {{ $itemNoun }}</strong></td>
     </tr></table>
 
-    <table class="receipt-recipient"><tr>
+    <table class="receipt-recipient receipt-table"><tr>
         <td><span class="receipt-label">Diterima dari</span><strong class="receipt-value">{{ $student?->nama ?? 'Nama siswa tidak tersedia' }}</strong><small>NIS {{ $student?->nis ?? '-' }} · {{ $classLabel }}</small></td>
         <td><span class="receipt-label">Unit sekolah</span><strong class="receipt-value">{{ $school?->nama_sekolah ?? 'Sekolah belum diatur' }}</strong><small>{{ $school?->kode_sekolah ? 'Kode sekolah ' . $school->kode_sekolah : 'Kode sekolah belum diatur' }}</small></td>
     </tr></table>
 
     <div class="receipt-section-heading"><strong>Rincian transaksi</strong><span>{{ $items->count() }} item</span></div>
-    <table class="receipt-items">
+    <table class="receipt-items receipt-table">
         <thead><tr><th class="receipt-col-number">No.</th><th class="receipt-col-description">Rincian pembayaran</th><th class="receipt-col-money">Nilai</th><th class="receipt-col-money">Potongan</th><th class="receipt-col-money">Diterima</th></tr></thead>
         <tbody>
             @foreach($items as $item)
@@ -180,7 +180,7 @@
         </tbody>
     </table>
 
-    <table class="receipt-totals"><tr>
+    <table class="receipt-totals receipt-table"><tr>
         <td class="receipt-spelled"><span class="receipt-label">Terbilang</span><strong>{{ $spelledAmount }}</strong></td>
         <td class="receipt-summary">
             <div class="receipt-summary-row">Nilai transaksi <strong>{{ $formatRupiah($transactionTotal) }}</strong></div>
@@ -191,9 +191,9 @@
 
     @if($showNote)<div class="receipt-note"><strong>Keterangan</strong>{{ $rawNote }}</div>@endif
 
-    <table class="receipt-signatures"><tr>
+    <table class="receipt-signatures receipt-table"><tr>
         <td class="receipt-validity"><strong>Bukti pembayaran resmi</strong><span>Kwitansi ini dibuat oleh {{ $systemLabel }} dan sah tanpa stempel tambahan.</span></td>
-        <td class="receipt-signature">Jambi, {{ $receiptAt->locale('id')->translatedFormat('d F Y') }}<br><span class="receipt-signature-line">Petugas administrasi</span></td>
+        <td class="receipt-signature">Jambi, {{ $receiptAt->locale('id')->translatedFormat('d F Y') }}<br><span class="receipt-signature-line">{{ \App\Models\ReceiptSetting::current()->show_officer && !empty($receipt['officer']) ? $receipt['officer'] : 'Petugas administrasi' }}</span></td>
     </tr></table>
 
     <div class="receipt-footer"><span>Dicetak melalui {{ $systemLabel }}.</span><span>No. {{ $receipt['number'] ?? '-' }}</span></div>

@@ -65,12 +65,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const iconRules = [
             [/\b(tambah|buat|baru)\b/i, 'fa-plus'],
             [/\b(simpan|save)\b/i, 'fa-floppy-disk'],
-            [/\b(edit|ubah)\b/i, 'fa-pen'],
+            [/\b(edit|ubah|koreksi)\b/i, 'fa-pen'],
             [/\b(hapus|delete)\b/i, 'fa-trash-can'],
             [/\b(lihat|detail|view)\b/i, 'fa-eye'],
             [/\b(kembali|back)\b/i, 'fa-arrow-left'],
             [/\b(batal|batalkan)\b/i, 'fa-xmark'],
             [/\b(cetak|print)\b/i, 'fa-print'],
+            [/\bkwitansi\b/i, 'fa-receipt'],
             [/\b(download|export|unduh)\b/i, 'fa-file-arrow-down'],
             [/\b(import|unggah|upload)\b/i, 'fa-file-arrow-up'],
             [/\b(filter|tampilkan)\b/i, 'fa-filter'],
@@ -83,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const toneRules = [
             [/\b(hapus|delete|batal|batalkan|nonaktifkan|tolak)\b/i, 'pi-tone-danger'],
-            [/\b(edit|ubah)\b/i, 'pi-tone-warning'],
+            [/\b(edit|ubah|koreksi)\b/i, 'pi-tone-warning'],
             [/\b(simpan|save|update|luluskan|selesai|konfirmasi|aktifkan|setujui)\b/i, 'pi-tone-success'],
             [/\b(cetak|print)\b/i, 'pi-tone-print'],
             [/\b(download|export|unduh)\b/i, 'pi-tone-export'],
@@ -283,6 +284,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     heading.prepend(icon);
                 }
 
+                // The payment editor positions its activation controls separately.
+                if (table.matches('.payment-bill-table') && /\b(aksi|action)\b/i.test(label)) return;
+
                 const columnClasses = [];
                 if (/^(no|nomor|#)$/i.test(label)) columnClasses.push('pi-index-column');
                 if (/\b(aksi|action)\b/i.test(label)) columnClasses.push('pi-action-column');
@@ -304,7 +308,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         columnClasses.forEach((className) => cell.classList.add(className));
 
                         if (columnClasses.includes('pi-action-column')) {
-                            const actions = cell.querySelector('.action-buttons, .billing-row-actions, .koperasi-actions');
+                            let actions = cell.querySelector('.action-buttons, .billing-row-actions, .koperasi-actions');
+                            if (!actions) {
+                                const directActions = Array.from(cell.children).filter((child) =>
+                                    child.matches('a, button') ||
+                                    (child.matches('form') && child.querySelector('button, a'))
+                                );
+                                if (directActions.length) {
+                                    actions = document.createElement('div');
+                                    cell.insertBefore(actions, directActions[0]);
+                                    directActions.forEach((action) => actions.appendChild(action));
+                                }
+                            }
                             if (actions) actions.classList.add('pi-table-actions');
                             cell.querySelectorAll('a, button').forEach((action) => {
                                 action.classList.add('pi-table-action');
@@ -335,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         1,
                         ...cellsWithActions.map((cell) => cell.querySelectorAll('a, button').length)
                     );
-                    const sizeClass = `pi-actions-${Math.min(actionCount, 3)}`;
+                    const sizeClass = `pi-actions-${Math.min(actionCount, 4)}`;
                     [heading, ...columnCells].forEach((element) => element.classList.add(sizeClass));
 
                     const iconOnly = actionCount === 1 && cellsWithActions.length > 0 &&

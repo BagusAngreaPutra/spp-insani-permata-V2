@@ -395,7 +395,7 @@
         </form>
 
         <div class="table-container">
-            <table class="modern-table">
+            <table class="modern-table" data-server-paginate data-total="{{ $siswa->total() }}" data-per-page="{{ \App\Support\ServerTable::size(request()) }}" data-sort-columns="id,nis,nama,sekolah,kelas,tahun,nominal_spp," data-text-sort="nama" data-date-sort="id">
                 <thead>
                     <tr>
                         <th>No</th>
@@ -411,7 +411,7 @@
                 <tbody>
                     @forelse ($siswa as $item)
                         <tr>
-                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ $siswa->firstItem() + $loop->index }}</td>
                             <td>{{ $item->nis }}</td>
                             <td>{{ $item->nama }}</td>
                             <td>{{ $item->sekolah->nama_sekolah ?? '-' }}</td>
@@ -471,12 +471,7 @@
             </table>
         </div>
 
-        {{-- Pagination jika ada --}}
-        @if(method_exists($siswa, 'links'))
-            <div class="mt-4">
-                {{ $siswa->links() }}
-            </div>
-        @endif
+        @include('partials.server-pagination', ['paginator' => $siswa])
     </div>
 </div>
 @endsection

@@ -498,6 +498,13 @@ class JenisPembayaranController extends Controller
         }
 
         $tagihan = Tagihan::firstOrNew($identity);
+
+        // Nominal pada tagihan yang sudah dibayar adalah rekam historis.
+        // Perubahan jenis pembayaran hanya boleh mengubah nominal tagihan yang belum dibayar.
+        if ($tagihan->exists && $tagihan->pembayaran()->exists()) {
+            unset($attributes['nominal']);
+        }
+
         $tagihan->fill($attributes);
 
         if (!$tagihan->exists) {

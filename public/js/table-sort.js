@@ -4,6 +4,11 @@
     const tableStates = new WeakMap();
     const tableToolbars = new WeakMap();
     const originalRowOrders = new WeakMap();
+    let toolbarNumber = 0;
+    const navigateServer = (table, url) => {
+        const event = new CustomEvent('permata:server-navigate', { bubbles: true, cancelable: true, detail: { url } });
+        if (table.dispatchEvent(event)) location.assign(url);
+    };
     const collator = new Intl.Collator('id-ID', {
         numeric: true,
         sensitivity: 'base',
@@ -360,21 +365,18 @@
         <span class="pi-sort-sr">Belum diurutkan</span>`;
 
     const sortbarMarkup = `
-        <div class="pi-table-sortbar-label">
-            <span class="pi-table-sortbar-icon" aria-hidden="true">
-                <svg viewBox="0 0 20 20" fill="none">
-                    <path d="M6 4v12m0 0-2.5-2.5M6 16l2.5-2.5M14 16V4m0 0-2.5 2.5M14 4l2.5 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </span>
-            <span>Urutkan</span>
+        <div class="pi-table-options-heading">
+            <strong>Tampilan tabel</strong>
+            <button type="button" class="pi-table-options-close" aria-label="Tutup pengaturan">&times;</button>
         </div>
+        <label class="pi-table-option">Urutkan
         <select class="pi-table-sortbar-select" aria-label="Urutkan data tabel">
-            <option value="">Urutkan data</option>
+            <option value="">Urutan awal</option>
             <option value="text-asc">A – Z</option>
             <option value="text-desc">Z – A</option>
             <option value="date-desc">Terbaru</option>
             <option value="date-asc">Terlama</option>
-        </select>`;
+        </select></label>`;
 
     const buildSortToolbar = (table, headerRow) => {
         if (tableToolbars.has(table)) return;
@@ -383,18 +385,105 @@
             .map((header, index) => ({ header, index }))
             .filter(({ header }) => header.classList.contains('pi-sortable-column'));
         if (!sortableHeaders.length) return;
+        const rows = [...table.tBodies].flatMap(body => sortableRows(body, 0));
+        if (rows.length < 2 && !table.hasAttribute('data-server-paginate')) return;
 
-        const root = document.createElement('div');
-        root.className = 'pi-table-sortbar';
+        const existingRoot = document.getElementById(table.dataset.piToolbar || '');
+        const root = existingRoot || document.createElement('div');
+        root.classList.add('pi-table-sortbar');
+        toolbarNumber += 1;
+        if (!root.id) root.id = `pi-table-toolbar-${toolbarNumber}`;
         root.setAttribute('role', 'group');
-        root.setAttribute('aria-label', 'Pengurutan tabel');
-        root.innerHTML = sortbarMarkup;
+        root.setAttribute('aria-label', 'Kontrol tabel');
+        const meta = root.querySelector('.pi-table-meta') || document.createElement('span');
+        meta.className = 'pi-table-meta';
+        if (!existingRoot) meta.textContent = `${Number(table.dataset.total || rows.length).toLocaleString('id-ID')} data`;
+        const button = root.querySelector('.pi-table-options-button') || document.createElement('button');
+        button.type = 'button';
+        button.className = 'pi-table-options-button';
+        button.setAttribute('aria-label', 'Atur tampilan tabel');
+        button.title = 'Atur urutan dan tampilan tabel';
+        button.setAttribute('aria-expanded', 'false');
+        button.innerHTML = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14M7 3v4M13 8v4M8 13v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+        if (!existingRoot) root.append(meta, button);
 
-        const select = root.querySelector('.pi-table-sortbar-select');
+        // A top-layer panel cannot be cut off by horizontally scrolling tables.
+        const panel = document.createElement('div');
+        panel.id = `pi-table-options-${toolbarNumber}`;
+        panel.className = 'pi-table-options-panel';
+        panel.setAttribute('popover', 'auto');
+        panel.setAttribute('role', 'region');
+        panel.setAttribute('aria-label', 'Pengaturan tampilan tabel');
+        panel.innerHTML = sortbarMarkup;
+        document.body.append(panel);
+        const lifecycle = new AbortController();
+        const listenerOptions = { signal: lifecycle.signal };
+        table.addEventListener('permata:table-destroy', () => {
+            lifecycle.abort();
+            panel.remove();
+            tableToolbars.delete(table);
+        }, { once: true });
+        button.setAttribute('aria-controls', panel.id);
+        table.dataset.piToolbar = root.id;
+        table.dataset.piOptionsPanel = panel.id;
+
+        const nativePopover = typeof panel.showPopover === 'function';
+        if (!nativePopover) { panel.removeAttribute('popover'); panel.hidden = true; }
+        const isOpen = () => nativePopover ? panel.matches(':popover-open') : !panel.hidden;
+        const positionPanel = () => {
+            const trigger = button.getBoundingClientRect();
+            const bounds = panel.getBoundingClientRect();
+            panel.style.left = `${Math.max(12, Math.min(trigger.right - bounds.width, innerWidth - bounds.width - 12))}px`;
+            panel.style.top = `${Math.max(12, trigger.bottom + bounds.height + 8 <= innerHeight - 12 ? trigger.bottom + 8 : trigger.top - bounds.height - 8)}px`;
+        };
+        const closePanel = () => {
+            if (nativePopover) { if (isOpen()) panel.hidePopover(); }
+            else panel.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+        };
+        button.addEventListener('click', () => {
+            if (isOpen()) { closePanel(); return; }
+            if (nativePopover) panel.showPopover();
+            else panel.hidden = false;
+            button.setAttribute('aria-expanded', 'true');
+            positionPanel();
+            select.focus({ preventScroll: true });
+        }, listenerOptions);
+        panel.addEventListener('toggle', () => button.setAttribute('aria-expanded', String(isOpen())), listenerOptions);
+        panel.querySelector('.pi-table-options-close').addEventListener('click', () => { closePanel(); button.focus(); });
+        window.addEventListener('resize', () => { if (isOpen()) positionPanel(); }, listenerOptions);
+        document.addEventListener('scroll', event => {
+            if (!isOpen() || event.target === panel || panel.contains(event.target)) return;
+            const trigger = button.getBoundingClientRect();
+            if (trigger.bottom < 0 || trigger.top > innerHeight) closePanel();
+            else positionPanel();
+        }, { ...listenerOptions, capture: true });
+        if (!nativePopover) {
+            document.addEventListener('click', event => { if (!button.contains(event.target) && !panel.contains(event.target)) closePanel(); }, listenerOptions);
+        }
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && isOpen()) { closePanel(); button.focus(); } }, listenerOptions);
+
+        const select = panel.querySelector('.pi-table-sortbar-select');
         const targets = resolveSortTargets(table, headerRow);
 
         select.addEventListener('change', () => {
-            if (!select.value) return;
+            if (table.hasAttribute('data-server-paginate')) {
+                const url = new URL(location.href);
+                const [mode, direction] = select.value.split('-');
+                if (select.value) {
+                    url.searchParams.set('sort', mode === 'date' ? table.dataset.dateSort : table.dataset.textSort);
+                    url.searchParams.set('direction', direction);
+                } else { url.searchParams.delete('sort'); url.searchParams.delete('direction'); }
+                url.searchParams.delete('page');
+                navigateServer(table, url);
+                return;
+            }
+            if (!select.value) {
+                sortTableByOriginalOrder(table, 'asc');
+                select.value = '';
+                root.dataset.active = 'false';
+                return;
+            }
 
             const [mode, direction] = select.value.split('-');
             const refreshedTargets = resolveSortTargets(table, headerRow);
@@ -406,9 +495,16 @@
 
             sortTable(table, target.header, target.index, direction);
         });
+        if (table.hasAttribute('data-server-paginate')) {
+            const params = new URLSearchParams(location.search);
+            const sort = params.get('sort');
+            if (sort === table.dataset.textSort) select.value = `text-${params.get('direction') || 'asc'}`;
+            else if (sort === table.dataset.dateSort) select.value = `date-${params.get('direction') || 'desc'}`;
+        }
 
         tableToolbars.set(table, { root, select, headerRow, targets });
-        table.insertAdjacentElement('beforebegin', root);
+        if (!existingRoot) table.insertAdjacentElement('beforebegin', root);
+        document.dispatchEvent(new CustomEvent('permata:table-tools-ready', { detail: { table } }));
     };
 
     const enhanceTable = (table) => {
@@ -421,6 +517,8 @@
         let enhancedColumns = 0;
         [...headerRow.cells].forEach((header, index) => {
             if (header.dataset.piSortBound === 'true' || shouldSkipHeader(header)) return;
+            const serverKey = table.dataset.sortColumns?.split(',')[index];
+            if (table.hasAttribute('data-server-paginate') && !serverKey) return;
 
             header.dataset.piSortBound = 'true';
             header.dataset.piSortLabel = normalize(header.textContent);
@@ -430,7 +528,18 @@
             header.title = 'Klik untuk mengurutkan';
             header.insertAdjacentHTML('beforeend', indicatorMarkup);
 
-            const activate = () => sortTable(table, header, index);
+            const activate = () => {
+                if (table.hasAttribute('data-server-paginate')) {
+                    const url = new URL(location.href);
+                    const direction = url.searchParams.get('sort') === serverKey && url.searchParams.get('direction') === 'asc' ? 'desc' : 'asc';
+                    url.searchParams.set('sort', serverKey); url.searchParams.set('direction', direction); url.searchParams.delete('page');
+                    navigateServer(table, url); return;
+                }
+                sortTable(table, header, index);
+            };
+            if (table.hasAttribute('data-server-paginate') && new URLSearchParams(location.search).get('sort') === serverKey) {
+                header.setAttribute('aria-sort', new URLSearchParams(location.search).get('direction') === 'desc' ? 'descending' : 'ascending');
+            }
             header.addEventListener('click', (event) => {
                 if (event.target.closest('a, button, input, select, textarea')) return;
                 activate();

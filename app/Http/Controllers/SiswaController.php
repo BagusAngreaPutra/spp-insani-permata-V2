@@ -59,7 +59,18 @@ class SiswaController extends Controller
             });
         }
 
-        $siswa = $query->get();
+        $sort = $request->input('sort', 'id');
+        $direction = \App\Support\ServerTable::direction($request);
+        if ($sort === 'sekolah') {
+            $query->orderBy(Sekolah::select('nama_sekolah')->whereColumn('sekolah.id', 'siswa.id_sekolah'), $direction);
+        } elseif ($sort === 'kelas') {
+            $query->orderBy(Kelas::select('tingkat')->whereColumn('kelas.id', 'siswa.kelas_id'), $direction);
+        } elseif ($sort === 'tahun') {
+            $query->orderBy(TahunAjaran::select('nama_tahun')->whereColumn('tahun_ajaran.id', 'siswa.tahun_ajaran_id'), $direction);
+        } else {
+            $query->orderBy(in_array($sort, ['id', 'nis', 'nama', 'nominal_spp'], true) ? $sort : 'id', $direction);
+        }
+        $siswa = \App\Support\ServerTable::paginate($query->orderBy('siswa.id'), $request);
 
         // Log aktivitas
         \App\Models\LogAktivitas::create([

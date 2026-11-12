@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="{{ asset('css/table-sort.css') }}?v=20260804-5" rel="stylesheet">
+    <link href="{{ asset('css/table-sort.css') }}?v=20261021-2" rel="stylesheet">
     <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
-    <script src="{{ asset('js/table-sort.js') }}?v=20260804-5" defer></script>
+    <script src="{{ asset('js/table-sort.js') }}?v=20261021-2" defer></script>
 </head>
 <body>
     @include('layouts.sidebar-siswa')

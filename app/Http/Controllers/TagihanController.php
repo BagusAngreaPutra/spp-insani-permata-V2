@@ -562,7 +562,6 @@ class TagihanController extends Controller
      */
     public function indexGrouped(Request $request)
     {
-        $periodReconciler = app(TagihanPeriodReconciler::class);
         $sekolahData = Sekolah::query()
             ->orderBy('nama_sekolah')
             ->get();
@@ -575,10 +574,6 @@ class TagihanController extends Controller
         $availableClasses = Kelas::query()
             ->with('sekolah')
             ->withCount('siswa')
-            ->when(
-                $selectedSekolah,
-                fn ($query) => $query->where('sekolah_id', $selectedSekolah->id)
-            )
             ->orderBy('sekolah_id')
             ->orderBy('tingkat')
             ->orderBy('nama_kelas')
@@ -587,111 +582,50 @@ class TagihanController extends Controller
         $selectedKelas = $request->filled('kelas')
             ? $availableClasses->firstWhere('id', $request->integer('kelas'))
             : null;
+        if ($selectedSekolah && $selectedKelas && (int) $selectedKelas->sekolah_id !== (int) $selectedSekolah->id) {
+            $selectedKelas = null;
+        }
         $activeTahunAjaran = $academicYearData->firstWhere('aktif', true)
             ?? $academicYearData->first();
         $selectedTahunAjaran = $request->filled('tahun_ajaran')
             ? ($academicYearData->firstWhere('id', $request->integer('tahun_ajaran')) ?? $activeTahunAjaran)
             : $activeTahunAjaran;
 
-        $studentRows = Siswa::query()
-            ->when(
-                $selectedSekolah,
-                fn ($query) => $query->where('id_sekolah', $selectedSekolah->id)
-            )
-            ->when(
-                $selectedKelas,
-                fn ($query) => $query->where('kelas_id', $selectedKelas->id)
-            )
-            ->with([
-                'sekolah',
-                'kelas',
-                'tagihan' => fn ($query) => $query
-                    ->when(
-                        $selectedTahunAjaran,
-                        fn ($tagihanQuery) => $tagihanQuery->where('tahun_ajaran_id', $selectedTahunAjaran->id)
-                    )
-                    ->with('jenisPembayaran.tahunAjaran')
-                    ->withSum('pembayaran as total_dibayar', 'jumlah_bayar')
-                    ->withSum('pembayaran as total_diskon', 'diskon'),
-            ])
-            ->orderBy('nama')
-            ->get()
-            ->map(function (Siswa $siswa) use ($periodReconciler) {
-                $tagihanAktif = $siswa->tagihan
-                    ->filter(fn (Tagihan $tagihan) => $tagihan->is_active)
-                    ->filter(fn (Tagihan $tagihan) => $periodReconciler->belongsToConfiguredPeriod($tagihan));
-                $totalTagihan = $tagihanAktif->count();
-                $totalNominal = 0;
-                $totalDibayar = 0;
-                $totalDiskon = 0;
-                $sisaBayar = 0;
-                $sisaAktual = 0;
-                $sisaBelumJatuhTempo = 0;
-
-                foreach ($tagihanAktif as $tagihan) {
-                    $nominal = (float) $tagihan->nominal;
-                    $dibayar = (float) ($tagihan->total_dibayar ?? 0);
-                    $diskon = (float) ($tagihan->total_diskon ?? 0);
-
-                    $totalNominal += $nominal;
-                    $totalDibayar += $dibayar;
-                    $totalDiskon += $diskon;
-                    $sisaTagihan = max(0, $nominal - ($dibayar + $diskon));
-                    $sisaAktual += $sisaTagihan;
-
-                    if ($tagihan->isBelumJatuhTempo()) {
-                        $sisaBelumJatuhTempo += $sisaTagihan;
-                    } else {
-                        $sisaBayar += $sisaTagihan;
-                    }
-                }
-
-                if ($totalTagihan === 0) {
-                    $status = 'kosong';
-                } elseif ($sisaAktual <= 0) {
-                    $status = 'lunas';
-                } elseif ($sisaBayar <= 0 && $sisaBelumJatuhTempo > 0) {
-                    $status = 'belum_jatuh_tempo';
-                } elseif (($totalDibayar + $totalDiskon) > 0) {
-                    $status = 'sebagian';
-                } else {
-                    $status = 'belum';
-                }
-
-                $className = trim((string) ($siswa->kelas?->nama_kelas ?? ''));
-                $classLabel = !$siswa->kelas
-                    ? 'Kelas belum diatur'
-                    : (in_array($className, ['', '-', '–'], true)
-                        ? $siswa->kelas->label_tingkat
-                        : $siswa->kelas->label_tingkat . ' · ' . $className);
-
-                return [
-                    'id' => $siswa->id,
-                    'nama' => $siswa->nama,
-                    'nis' => $siswa->nis,
-                    'initial' => strtoupper(substr($siswa->nama, 0, 1)),
-                    'school_name' => $siswa->sekolah?->nama_sekolah ?? 'Sekolah belum diatur',
-                    'class_name' => $classLabel,
-                    'total_tagihan' => $totalTagihan,
-                    'total_nominal' => $totalNominal,
-                    'total_dibayar' => $totalDibayar,
-                    'total_diskon' => $totalDiskon,
-                    'sisa_bayar' => $sisaBayar,
-                    'sisa_aktual' => $sisaAktual,
-                    'status' => $status,
-                ];
+        $workspace = app(\App\Services\BillingWorkspace::class);
+        $query = $workspace->query($selectedTahunAjaran?->id)
+            ->when($selectedSekolah, fn ($q) => $q->where('siswa.id_sekolah', $selectedSekolah->id))
+            ->when($selectedKelas, fn ($q) => $q->where('siswa.kelas_id', $selectedKelas->id));
+        $search = is_string($request->input('table_search')) ? trim($request->input('table_search')) : '';
+        if ($search !== '') {
+            $classIds = $availableClasses->filter(function ($class) use ($search) {
+                $name = trim((string) $class->nama_kelas);
+                $label = $class->label_tingkat.(in_array($name, ['', '-', '–'], true) ? '' : ' · '.$name);
+                return str_contains(mb_strtolower($label), mb_strtolower($search));
+            })->pluck('id');
+            $query->where(function ($q) use ($search, $classIds) {
+                $q->where('siswa.nama', 'like', '%'.$search.'%')->orWhere('siswa.nis', 'like', '%'.$search.'%')
+                    ->orWhereHas('sekolah', fn ($s) => $s->where('nama_sekolah', 'like', '%'.$search.'%'))
+                    ->orWhereIn('siswa.kelas_id', $classIds);
             });
+        }
+        $status = is_string($request->input('table_status')) ? $request->input('table_status') : 'all';
+        if ($status === 'open') {
+            $query->whereRaw($workspace->statusSql()." IN ('belum', 'sebagian', 'belum_jatuh_tempo')");
+        } elseif (in_array($status, ['lunas', 'sebagian', 'belum_jatuh_tempo', 'belum', 'kosong'], true)) {
+            $query->whereRaw($workspace->statusSql().' = ?', [$status]);
+        }
+        $workspaceSummary = $workspace->summary($query);
+        $sorts = ['nama' => 'siswa.nama', 'id' => 'siswa.id', 'status' => 'workspace_status',
+            'total_tagihan' => 'total_tagihan', 'total_nominal' => 'total_nominal',
+            'total_dibayar' => 'total_dibayar', 'sisa_bayar' => 'sisa_bayar'];
+        $sortValue = $request->input('sort', 'nama');
+        $sort = is_string($sortValue) ? ($sorts[$sortValue] ?? 'siswa.nama') : 'siswa.nama';
+        $query->orderBy($sort, \App\Support\ServerTable::direction($request))->orderBy('siswa.id');
+        $studentPaginator = \App\Support\ServerTable::paginate($query, $request);
+        $studentRows = $studentPaginator->getCollection()->map(fn ($student) => $workspace->row($student));
+        $studentPaginator->setCollection($studentRows);
 
-        $workspaceSummary = [
-            'total_siswa' => $studentRows->count(),
-            'total_tagihan' => $studentRows->sum('total_tagihan'),
-            'total_nominal' => $studentRows->sum('total_nominal'),
-            'total_dibayar' => $studentRows->sum('total_dibayar'),
-            'sisa_bayar' => $studentRows->sum('sisa_bayar'),
-            'siswa_lunas' => $studentRows->where('status', 'lunas')->count(),
-        ];
-
-        return view('tagihan.index_new', compact(
+        $view = view('tagihan.index_new', compact(
             'sekolahData',
             'academicYearData',
             'availableClasses',
@@ -699,8 +633,15 @@ class TagihanController extends Controller
             'selectedKelas',
             'selectedTahunAjaran',
             'studentRows',
+            'studentPaginator',
             'workspaceSummary'
         ));
+        if ($request->header('X-Billing-Live') === '1') {
+            return response($view->fragment('billing-live'))
+                ->header('Cache-Control', 'no-store')
+                ->header('Vary', 'X-Billing-Live');
+        }
+        return $view;
     }
 
     /**

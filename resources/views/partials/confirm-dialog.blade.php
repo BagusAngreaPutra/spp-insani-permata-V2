@@ -37,6 +37,12 @@
     .app-confirm-copy { min-width: 0; }
     .app-confirm-copy h2 { margin: 1px 0 6px; color: #101828; font-size: 15px; font-weight: 750; }
     .app-confirm-copy p { margin: 0; color: #667085; font-size: 11px; line-height: 1.6; }
+    .app-confirm-reason[hidden] { display: none !important; }
+    .app-confirm-reason { padding: 0 20px 20px; }
+    .app-confirm-reason label { display: block; margin-bottom: 7px; color: #344054; font-size: 12px; font-weight: 650; }
+    .app-confirm-reason textarea { display: block; box-sizing: border-box; width: 100%; min-height: 96px; padding: 10px 12px; resize: vertical; border: 1px solid #d0d5dd; border-radius: 8px; color: #344054; background: #fff; font: inherit; font-size: 12px; line-height: 1.5; }
+    .app-confirm-reason textarea:focus { outline: 2px solid #c7d7fe; outline-offset: 1px; border-color: #8098f9; }
+    .app-confirm-reason small { display: block; margin-top: 7px; color: #667085; font-size: 11px; }
     .app-confirm-actions {
         display: flex;
         justify-content: flex-end;
@@ -63,6 +69,7 @@
     .app-confirm-button.is-confirm { color: #fff; background: #1d6b4c; border-color: #1d6b4c; }
     .app-confirm-card.is-danger .app-confirm-button.is-confirm { background: #d92d20; border-color: #d92d20; }
     @keyframes app-confirm-enter { from { opacity: 0; transform: translateY(7px) scale(.985); } }
+    @media print { .app-confirm-layer { display: none !important; } }
 </style>
 
 <div class="app-confirm-layer" id="appConfirmLayer" hidden aria-hidden="true">
@@ -73,6 +80,11 @@
                 <h2 id="appConfirmTitle">Konfirmasi tindakan</h2>
                 <p id="appConfirmMessage"></p>
             </div>
+        </div>
+        <div class="app-confirm-reason" id="appConfirmReasonGroup" hidden>
+            <label for="appConfirmReason">Alasan pembatalan</label>
+            <textarea id="appConfirmReason" rows="3" minlength="5" maxlength="1000" placeholder="Contoh: Transaksi tercatat dua kali." aria-describedby="appConfirmReasonHelp"></textarea>
+            <small id="appConfirmReasonHelp">Alasan wajib diisi, minimal 5 karakter.</small>
         </div>
         <div class="app-confirm-actions">
             <button class="app-confirm-button" id="appConfirmCancel" type="button">Batal</button>
@@ -90,7 +102,12 @@
     const icon = document.getElementById('appConfirmIcon');
     const cancel = document.getElementById('appConfirmCancel');
     const accept = document.getElementById('appConfirmAccept');
+    const reasonGroup = document.getElementById('appConfirmReasonGroup');
+    const reason = document.getElementById('appConfirmReason');
     let finish = null;
+    let reasonTarget = null;
+    let previousFocus = null;
+    let previousOverflow = '';
 
     const close = (result) => {
         if (!finish) return;
@@ -98,7 +115,9 @@
         finish = null;
         layer.hidden = true;
         layer.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
+        document.body.style.overflow = previousOverflow;
+        previousFocus?.focus({ preventScroll: true });
+        reasonTarget = null;
         resolver(result);
     };
 
@@ -110,17 +129,41 @@
         message.textContent = options.message || 'Apakah Anda yakin ingin melanjutkan?';
         accept.textContent = options.confirmText || 'Lanjutkan';
         icon.className = tone === 'danger' ? 'fas fa-trash-can' : (tone === 'success' ? 'fas fa-circle-check' : 'fas fa-triangle-exclamation');
+        reasonTarget = options.reasonTarget || null;
+        reasonGroup.hidden = !reasonTarget;
+        reason.required = Boolean(reasonTarget);
+        reason.value = reasonTarget?.value || '';
+        reason.setCustomValidity('');
+        previousFocus = document.activeElement;
+        previousOverflow = document.body.style.overflow;
         finish = resolve;
         layer.hidden = false;
         layer.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
-        window.setTimeout(() => cancel.focus(), 0);
+        window.setTimeout(() => { if (!layer.hidden) (reasonTarget ? reason : cancel).focus(); }, 0);
     });
 
     cancel.addEventListener('click', () => close(false));
-    accept.addEventListener('click', () => close(true));
+    accept.addEventListener('click', () => {
+        if (reasonTarget) {
+            reason.value = reason.value.trim();
+            reason.setCustomValidity(reason.value.length < 5 ? 'Tuliskan alasan pembatalan, minimal 5 karakter.' : '');
+            if (!reason.reportValidity()) return;
+            reasonTarget.value = reason.value;
+        }
+        close(true);
+    });
+    reason.addEventListener('input', () => reason.setCustomValidity(''));
     layer.addEventListener('click', (event) => { if (event.target === layer) close(false); });
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !layer.hidden) close(false); });
+    document.addEventListener('keydown', (event) => {
+        if (layer.hidden) return;
+        if (event.key === 'Escape') { event.preventDefault(); close(false); }
+        if (event.key === 'Tab') {
+            const first = reasonGroup.hidden ? cancel : reason;
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); accept.focus(); }
+            else if (!event.shiftKey && document.activeElement === accept) { event.preventDefault(); first.focus(); }
+        }
+    });
 
     document.addEventListener('submit', async (event) => {
         const form = event.target;
@@ -137,6 +180,7 @@
             message: form.dataset.confirmMessage,
             confirmText: form.dataset.confirmLabel,
             tone: form.dataset.confirmTone,
+            reasonTarget: form.hasAttribute('data-confirm-reason') ? form.elements.namedItem('alasan_pembatalan') : null,
         });
         if (!confirmed) return;
         form.dataset.confirmBypass = 'true';

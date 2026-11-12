@@ -1,36 +1,40 @@
 @extends('layouts.app')
-
+@include('layouts.sidebar-siswa')
+@section('title', 'Ubah Password')
 @section('content')
-<div class="main-content p-6">
-    @include('layouts.sidebar-siswa')
+<div class="main-content">
     @include('layouts.header-siswa')
-
-    <h1 class="text-2xl font-bold mb-4">Ubah Password</h1>
-
-    <form action="{{ route('siswa.profil.updatePassword') }}" method="POST" class="bg-white p-6 rounded shadow max-w-lg">
-        @csrf
-        @method('PUT')
-
-        <div class="mb-4">
-            <label class="block font-medium mb-1">Password Lama</label>
-            <input type="password" name="current_password" class="w-full border rounded p-2" required>
-            @error('current_password')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
+    <div class="content-area account-page">
+        <div class="account-heading">
+            <h1>Ubah Password</h1>
+            <p>Perbarui kata sandi untuk masuk ke portal siswa.</p>
         </div>
-
-        <div class="mb-4">
-            <label class="block font-medium mb-1">Password Baru</label>
-            <input type="password" name="new_password" class="w-full border rounded p-2" required>
-            @error('new_password')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
-        </div>
-
-        <div class="mb-4">
-            <label class="block font-medium mb-1">Konfirmasi Password Baru</label>
-            <input type="password" name="new_password_confirmation" class="w-full border rounded p-2" required>
-        </div>
-
-        <button type="submit" class="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800">
-            Simpan Perubahan
-        </button>
-    </form>
+        <section class="account-panel account-password-panel" aria-label="Formulir ubah password">
+            <form action="{{ route('siswa.profil.updatePassword') }}" method="POST" class="account-form">
+                @csrf
+                @method('PUT')
+                <input type="text" name="username" value="{{ Auth::guard('siswa')->user()->username }}" autocomplete="username" hidden>
+                <div>
+                    <label for="student_current_password">Password Lama</label>
+                    <input id="student_current_password" type="password" name="current_password" autocomplete="current-password" required>
+                    <x-input-error :messages="$errors->get('current_password')" class="mt-2" />
+                </div>
+                <div>
+                    <label for="student_new_password">Password Baru</label>
+                    <input id="student_new_password" type="password" name="new_password" autocomplete="new-password" required>
+                    <x-input-error :messages="$errors->get('new_password')" class="mt-2" />
+                </div>
+                <div>
+                    <label for="student_password_confirmation">Konfirmasi Password Baru</label>
+                    <input id="student_password_confirmation" type="password" name="new_password_confirmation" autocomplete="new-password" required>
+                    <x-input-error :messages="$errors->get('new_password_confirmation')" class="mt-2" />
+                </div>
+                <div class="account-actions">
+                    <button type="submit" class="btn btn-success">Simpan perubahan</button>
+                    <a href="{{ route('siswa.profil.index') }}" class="btn btn-outline-secondary">Kembali ke profil</a>
+                </div>
+            </form>
+        </section>
+    </div>
 </div>
 @endsection

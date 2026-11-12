@@ -32,7 +32,7 @@ class LaporanPembayaranController extends Controller
         }
 
         // Query awal
-        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran']);
+        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran.tahunAjaran', 'tagihan.tahunAjaran']);
 
         // Filter berdasarkan request
         if ($request->filled('sekolah_id')) {
@@ -78,20 +78,24 @@ class LaporanPembayaranController extends Controller
             });
         }
 
-        $pembayarans = $query->latest()->get();
-        
-        // Hitung subtotal berdasarkan metode pembayaran
-        $subtotal = $pembayarans->groupBy(fn ($item) => strtolower(trim((string) $item->metode_bayar)))->map(function ($items) {
-            return $items->sum('jumlah_bayar');
-        });
-
-        $reportSummary = [
-            'transactions' => $pembayarans->groupBy(fn ($item) => $item->transaction_id ?: ($item->nomor_kwitansi ?: 'payment-' . $item->id))->count(),
-            'students' => $pembayarans->pluck('siswa_id')->filter()->unique()->count(),
-            'gross' => (float) $pembayarans->sum(fn ($item) => (float) $item->jumlah_bayar + (float) $item->diskon),
-            'discount' => (float) $pembayarans->sum('diskon'),
-            'received' => (float) $pembayarans->sum('jumlah_bayar'),
-        ];
+        $totals = (clone $query)->toBase()->selectRaw('COUNT(DISTINCT siswa_id) AS students, COALESCE(SUM(jumlah_bayar + COALESCE(diskon, 0)), 0) AS gross, COALESCE(SUM(diskon), 0) AS discount, COALESCE(SUM(jumlah_bayar), 0) AS received')
+            ->selectRaw('COUNT(DISTINCT '.\App\Support\ServerTable::paymentKey().') AS transactions')->first();
+        $reportSummary = (array) $totals;
+        $method = "COALESCE(LOWER(TRIM(metode_bayar)), '')";
+        $subtotal = (clone $query)->toBase()->selectRaw($method.' AS method, SUM(jumlah_bayar) AS received')
+            ->groupByRaw($method)->pluck('received', 'method');
+        $sort = $request->input('sort');
+        $direction = \App\Support\ServerTable::direction($request, 'desc');
+        if ($sort === 'party') {
+            $query->orderBy(\App\Models\Siswa::select('nama')->whereColumn('siswa.id', 'pembayaran.siswa_id'), $direction);
+        } elseif (in_array($sort, ['tanggal_bayar', 'nomor_kwitansi', 'jumlah_bayar', 'diskon', 'metode_bayar', 'id'], true)) {
+            $query->orderBy($sort, $direction);
+        } elseif ($sort === 'gross') {
+            $query->orderByRaw('(jumlah_bayar + COALESCE(diskon, 0)) '.$direction);
+        } else {
+            $query->latest();
+        }
+        $pembayarans = \App\Support\ServerTable::paginate($query->orderByDesc('pembayaran.id'), $request);
 
         $sekolah = [
             'nama'   => 'SD IT Permata Insani Islamic School',
@@ -106,7 +110,7 @@ class LaporanPembayaranController extends Controller
     public function exportExcel(Request $request)
     {
         // Apply same filters as index method
-        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran']);
+        $query = Pembayaran::with(['siswa.kelas', 'siswa.sekolah', 'tagihan.jenisPembayaran.tahunAjaran', 'tagihan.tahunAjaran']);
 
         // Filter berdasarkan request
         if ($request->filled('sekolah_id')) {
@@ -248,7 +252,7 @@ class LaporanPembayaranController extends Controller
             $sheet->setCellValue('C'.$row, ($p->nomor_kwitansi ?: '-') . ' / ' . ($p->transaction_id ?: 'Transaksi #' . $p->id));
             $sheet->setCellValue('D'.$row, ($p->siswa?->nama ?? '-') . ' / ' . ($p->siswa?->nis ?? '-'));
             $sheet->setCellValue('E'.$row, ($p->siswa?->sekolah?->nama_sekolah ?? '-') . ' / ' . (($p->siswa?->kelas?->tingkat ?? '-') . ' ' . ($p->siswa?->kelas?->nama_kelas ?? '')));
-            $sheet->setCellValue('F'.$row, ($p->tagihan->nama_tagihan ?? 'Tagihan') . ' / ' . ($p->periode ?: ($p->tagihan->periode ?? '-')));
+            $sheet->setCellValue('F'.$row, app(\App\Services\BillDisplayName::class)->report($p->tagihan, $p->periode ?: $p->tagihan?->periode));
             $sheet->setCellValue('G'.$row, (float) $p->jumlah_bayar + (float) $p->diskon);
             $sheet->setCellValue('H'.$row, (float) $p->diskon);
             $sheet->setCellValue('I'.$row, (float) $p->jumlah_bayar);

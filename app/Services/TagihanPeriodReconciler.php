@@ -7,6 +7,7 @@ use App\Models\Siswa;
 use App\Models\Tagihan;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class TagihanPeriodReconciler
 {
@@ -22,9 +23,14 @@ class TagihanPeriodReconciler
             $staleTargetQuery->whereNotIn('siswa_id', $eligibleIds);
         }
 
-        $removed = $staleTargetQuery->whereDoesntHave('pembayaran')->delete();
-
         $updated = 0;
+        if (Schema::hasColumn('tagihan', 'is_active')) {
+            $updated += (clone $staleTargetQuery)
+                ->whereHas('pembayaran')
+                ->update(['is_active' => false]);
+        }
+
+        $removed = (clone $staleTargetQuery)->whereDoesntHave('pembayaran')->delete();
 
         foreach ($eligibleSiswa as $siswa) {
             $result = $this->reconcileForStudent($jenis, $siswa, true);
@@ -43,12 +49,22 @@ class TagihanPeriodReconciler
         $jenis->loadMissing('tahunAjaran');
 
         if (!$knownEligible && !$jenis->isStudentEligible($siswa->id)) {
-            $removed = Tagihan::where('jenis_pembayaran_id', $jenis->id)
+            $ineligibleQuery = Tagihan::where('jenis_pembayaran_id', $jenis->id)
+                ->where('siswa_id', $siswa->id);
+            $updated = 0;
+
+            if (Schema::hasColumn('tagihan', 'is_active')) {
+                $updated = (clone $ineligibleQuery)
+                    ->whereHas('pembayaran')
+                    ->update(['is_active' => false]);
+            }
+
+            $removed = (clone $ineligibleQuery)
                 ->where('siswa_id', $siswa->id)
                 ->whereDoesntHave('pembayaran')
                 ->delete();
 
-            return ['removed' => $removed, 'updated' => 0];
+            return ['removed' => $removed, 'updated' => $updated];
         }
 
         $expectedPeriods = $this->expectedPeriods($jenis);

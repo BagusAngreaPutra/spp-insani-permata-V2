@@ -52,4 +52,13 @@ class ReceiptBillNameTest extends TestCase
 
         return $method->invoke(app(PembayaranController::class), $bill);
     }
+
+    public function test_karate_and_tpq_receipts_include_the_bill_month_and_year(): void
+    {
+        foreach (['Karate', 'TPQ'] as $name) {
+            $bill = new Tagihan(['nama_tagihan' => $name.' - Tahun Ajaran 2026/2027', 'tipe' => 'bulanan', 'periode' => '2026-09']);
+            $bill->setRelation('jenisPembayaran', new JenisPembayaran(['nama_pembayaran' => $name]));
+            $this->assertSame($name.' SEPTEMBER 2026', $this->receiptName($bill));
+        }
+    }
 }

@@ -249,6 +249,13 @@
                             @error('keterangan')<small class="correction-error">{{ $message }}</small>@enderror
                         </div>
 
+                        @foreach($payments as $payment)
+                        <div class="correction-field">
+                            <label for="amount-{{ $payment->id }}">Nominal {{ app(\App\Services\BillDisplayName::class)->receipt($payment->tagihan) }}</label>
+                            <input type="number" id="amount-{{ $payment->id }}" name="amounts[{{ $payment->id }}]" min="0.01" step="0.01" value="{{ old('amounts.'.$payment->id, $payment->jumlah_bayar) }}" required>
+                            @error('amounts.'.$payment->id)<small class="correction-error">{{ $message }}</small>@enderror
+                        </div>
+                        @endforeach
                         <div class="correction-field is-full">
                             <label for="correctionReason">Alasan koreksi</label>
                             <textarea id="correctionReason" name="alasan_koreksi" required placeholder="Contoh: Metode pembayaran seharusnya transfer bank, bukan tunai.">{{ old('alasan_koreksi') }}</textarea>

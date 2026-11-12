@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Pembayaran extends Model
 {
+    use \Illuminate\Database\Eloquent\SoftDeletes;
     protected $table = 'pembayaran';
 
     protected $fillable = [
@@ -82,12 +83,15 @@ class Pembayaran extends Model
         parent::boot();
 
         static::creating(function ($pembayaran) {
+            $pembayaran->posted_by ??= auth('web')->id();
+            $pembayaran->posted_by_name ??= auth('web')->user()?->nama_admin;
             $pembayaran->tanggal_kwitansi ??= $pembayaran->tanggal_bayar;
+
+            $siswa = \App\Models\Siswa::find($pembayaran->siswa_id);
+            $pembayaran->sekolah_id ??= $siswa?->id_sekolah;
 
             // Jika nomor_kwitansi belum diatur
             if (!$pembayaran->nomor_kwitansi) {
-                $siswa = \App\Models\Siswa::find($pembayaran->siswa_id);
-                
                 if ($siswa && $siswa->sekolah && $siswa->sekolah->kode_sekolah) {
                     // Jika ini bagian dari transaksi multi-pembayaran (ada transaction_id)
                     if (!empty($pembayaran->transaction_id)) {

@@ -65,103 +65,76 @@ class KoperasiPenjualanController extends Controller
         return view('koperasi.penjualan.create', compact('siswa', 'barang'));
     }
 
-    public function store(Request $request)
+    public function edit(int $id)
+    {
+        $penjualan = KoperasiPenjualan::with('details')->findOrFail($id);
+        $siswa = Siswa::with(['sekolah', 'kelas'])->where('status', 'aktif')->orWhere('id', $penjualan->siswa_id)->orderBy('nama')->get();
+        $barang = Koperasi::with('sekolah')->where(function ($query) use ($penjualan) {
+            $query->where(function ($q) { $q->where('status', 'aktif')->where('jenis_transaksi', 'jual'); })
+                ->orWhereIn('id', $penjualan->details->pluck('koperasi_id'));
+        })->orderBy('nama_barang')->get();
+        foreach ($barang as $item) {
+            $old = $penjualan->details->where('koperasi_id', $item->id);
+            $item->stok += $old->sum('jumlah');
+            if ($old->isNotEmpty()) { $item->harga_jual = $old->first()->harga_satuan; }
+        }
+        return view('koperasi.penjualan.create', compact('siswa', 'barang', 'penjualan'));
+    }
+
+    public function update(Request $request, int $id)
+    {
+        return $this->saveSale($request, $id);
+    }
+
+    private function saveSale(Request $request, ?int $id = null)
     {
         $validated = $request->validate([
-            'siswa_id' => 'required|exists:siswa,id',
-            'tanggal' => 'required|date',
-            'catatan' => 'nullable|string',
-            'items' => 'required|array',
-            'items.*.koperasi_id' => 'nullable|exists:koperasi,id',
+            'siswa_id' => 'required|exists:siswa,id', 'tanggal' => 'required|date',
+            'catatan' => 'nullable|string|max:1000', 'metode_bayar' => 'required|in:tunai,transfer',
+            'alasan_koreksi' => $id ? 'required|string|min:5|max:1000' : 'nullable|string|max:1000',
+            'items' => 'required|array', 'items.*.koperasi_id' => 'nullable|exists:koperasi,id',
             'items.*.jumlah' => 'nullable|integer|min:1',
         ]);
+        $items = collect($validated['items'])->filter(fn ($item) => !empty($item['koperasi_id']) && !empty($item['jumlah']))
+            ->groupBy('koperasi_id')->map(fn ($group, $key) => ['koperasi_id' => (int) $key, 'jumlah' => $group->sum('jumlah')])->values();
+        if ($items->isEmpty()) { throw ValidationException::withMessages(['items' => 'Pilih minimal satu barang yang dibeli.']); }
 
-        $items = collect($validated['items'])
-            ->filter(fn ($item) => !empty($item['koperasi_id']) && !empty($item['jumlah']))
-            ->values();
-
-        if ($items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => 'Pilih minimal satu barang yang dibeli.',
-            ]);
-        }
-
-        $siswa = Siswa::findOrFail($validated['siswa_id']);
-
-        $penjualan = DB::transaction(function () use ($request, $validated, $items, $siswa) {
-            $kodeTransaksi = $this->generateKodeTransaksi();
-            $total = 0;
-            $preparedItems = [];
-
+        $sale = DB::transaction(function () use ($id, $validated, $items, $request) {
+            $sale = $id ? KoperasiPenjualan::lockForUpdate()->findOrFail($id) : new KoperasiPenjualan;
+            $old = $id ? $sale->details()->get() : collect();
+            $before = $id ? ['transaksi' => $sale->toArray(), 'items' => $old->toArray()] : null;
+            $goods = Koperasi::whereIn('id', $items->pluck('koperasi_id')->merge($old->pluck('koperasi_id'))->unique())->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            foreach ($old as $detail) {
+                if ($good = $goods->get($detail->koperasi_id)) { $good->increment('stok', $detail->jumlah); }
+            }
+            $student = Siswa::findOrFail($validated['siswa_id']);
+            $prepared = collect();
             foreach ($items as $item) {
-                $barang = Koperasi::whereKey($item['koperasi_id'])->lockForUpdate()->firstOrFail();
-                $jumlah = (int) $item['jumlah'];
-
-                if ($barang->status !== 'aktif') {
-                    throw ValidationException::withMessages([
-                        'items' => "Barang {$barang->nama_barang} sedang nonaktif.",
-                    ]);
+                $good = $goods->get($item['koperasi_id']);
+                if (!$good || $good->jenis_transaksi !== 'jual' || ($good->status !== 'aktif' && !$old->contains('koperasi_id', $good->id))) {
+                    throw ValidationException::withMessages(['items' => 'Barang harus merupakan barang jual yang tersedia.']);
                 }
-
-                if ($barang->jenis_transaksi !== 'jual') {
-                    throw ValidationException::withMessages([
-                        'items' => "{$barang->nama_barang} merupakan barang sewa dan tidak dapat dicatat sebagai penjualan.",
-                    ]);
+                if ($good->stok < $item['jumlah']) {
+                    throw ValidationException::withMessages(['items' => 'Stok '.$good->nama_barang.' tidak cukup. Tersedia: '.$good->stok]);
                 }
-
-                if ($barang->stok < $jumlah) {
-                    throw ValidationException::withMessages([
-                        'items' => "Stok {$barang->nama_barang} tidak cukup. Stok tersedia: {$barang->stok}.",
-                    ]);
-                }
-
-                $subtotal = $jumlah * (float) $barang->harga_jual;
-                $total += $subtotal;
-
-                $preparedItems[] = [
-                    'barang' => $barang,
-                    'jumlah' => $jumlah,
-                    'harga_satuan' => $barang->harga_jual,
-                    'subtotal' => $subtotal,
-                ];
+                $price = (float) ($old->firstWhere('koperasi_id', $good->id)?->harga_satuan ?? $good->harga_jual);
+                $prepared->push(['koperasi_id' => $good->id, 'nama_barang' => $good->nama_barang, 'jumlah' => $item['jumlah'], 'harga_satuan' => $price, 'subtotal' => $price * $item['jumlah']]);
+                $good->decrement('stok', $item['jumlah']);
             }
-
-            $penjualan = KoperasiPenjualan::create([
-                'sekolah_id' => $siswa->id_sekolah,
-                'siswa_id' => $siswa->id,
-                'kode_transaksi' => $kodeTransaksi,
-                'tanggal' => $validated['tanggal'],
-                'total' => $total,
-                'catatan' => $validated['catatan'] ?? null,
-            ]);
-
-            foreach ($preparedItems as $preparedItem) {
-                $barang = $preparedItem['barang'];
-                $barang->decrement('stok', $preparedItem['jumlah']);
-
-                $penjualan->details()->create([
-                    'koperasi_id' => $barang->id,
-                    'nama_barang' => $barang->nama_barang,
-                    'jumlah' => $preparedItem['jumlah'],
-                    'harga_satuan' => $preparedItem['harga_satuan'],
-                    'subtotal' => $preparedItem['subtotal'],
-                ]);
-            }
-
-            LogAktivitas::create([
-                'aktor_type' => 'admin',
-                'aktor_id' => Auth::guard('web')->id(),
-                'aktivitas' => 'Mencatat penjualan koperasi ' . $kodeTransaksi . ' untuk siswa: ' . $siswa->nama,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-
-            return $penjualan;
+            $sale->fill(['sekolah_id' => $student->id_sekolah, 'siswa_id' => $student->id, 'tanggal' => $validated['tanggal'], 'metode_bayar' => $validated['metode_bayar'], 'catatan' => $validated['catatan'] ?? null, 'total' => $prepared->sum('subtotal')]);
+            if (!$id) { $sale->kode_transaksi = $this->generateKodeTransaksi(); }
+            $sale->save();
+            if ($id) { $sale->details()->delete(); }
+            $sale->details()->createMany($prepared->all());
+            LogAktivitas::create(['aktor_type' => 'admin', 'aktor_id' => auth()->id(), 'aktivitas' => ($id ? 'Koreksi' : 'Mencatat').' penjualan koperasi '.$sale->kode_transaksi.'. Alasan: '.($validated['alasan_koreksi'] ?? '-').'. Sebelum: '.json_encode($before).'. Sesudah: '.json_encode(['transaksi' => $sale->toArray(), 'items' => $prepared->all()]), 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent()]);
+            return $sale;
         });
+        return redirect()->route('koperasi.penjualan.show', $sale->id)->with('success', 'Transaksi koperasi berhasil '.($id ? 'dikoreksi' : 'disimpan').'. Stok dan kas masuk telah diperbarui.');
+    }
 
-        return redirect()
-            ->route('koperasi.penjualan.show', $penjualan->id)
-            ->with('success', 'Transaksi penjualan koperasi berhasil disimpan dan stok barang sudah berkurang.');
+    public function store(Request $request)
+    {
+        return $this->saveSale($request);
     }
 
     public function show($id)
@@ -229,20 +202,23 @@ class KoperasiPenjualanController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $penjualan = KoperasiPenjualan::with('details')->findOrFail($id);
-        $kodeTransaksi = $penjualan->kode_transaksi;
-
-        DB::transaction(function () use ($request, $penjualan, $kodeTransaksi) {
+        $validated = $request->validate(['alasan_pembatalan' => 'required|string|min:5|max:1000']);
+        DB::transaction(function () use ($request, $id, $validated) {
+            $penjualan = KoperasiPenjualan::lockForUpdate()->findOrFail($id);
+            $penjualan->load('details');
+            $kodeTransaksi = $penjualan->kode_transaksi;
+            Koperasi::whereIn('id', $penjualan->details->pluck('koperasi_id'))->orderBy('id')->lockForUpdate()->get();
             foreach ($penjualan->details as $detail) {
                 Koperasi::whereKey($detail->koperasi_id)->increment('stok', $detail->jumlah);
             }
 
+            $penjualan->forceFill(['cancelled_by' => auth()->id(), 'cancellation_reason' => $validated['alasan_pembatalan']])->save();
             $penjualan->delete();
 
             LogAktivitas::create([
                 'aktor_type' => 'admin',
                 'aktor_id' => Auth::guard('web')->id(),
-                'aktivitas' => 'Membatalkan penjualan koperasi ' . $kodeTransaksi . ' dan mengembalikan stok barang',
+                'aktivitas' => 'Membatalkan / menghapus penjualan koperasi ' . $kodeTransaksi . ' dan mengembalikan stok barang. Alasan: '.$validated['alasan_pembatalan'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
@@ -255,12 +231,7 @@ class KoperasiPenjualanController extends Controller
 
     private function generateKodeTransaksi(): string
     {
-        $prefix = 'KOP-' . date('Ymd') . '-';
-        $lastNumber = KoperasiPenjualan::where('kode_transaksi', 'like', $prefix . '%')
-            ->selectRaw('MAX(CAST(SUBSTRING(kode_transaksi, ?) AS UNSIGNED)) as nomor', [strlen($prefix) + 1])
-            ->value('nomor');
-
-        return $prefix . str_pad(((int) $lastNumber) + 1, 4, '0', STR_PAD_LEFT);
+        return app(\App\Services\ReceiptNumberGenerator::class)->cooperative();
     }
 
     private function receiptForSale(KoperasiPenjualan $penjualan): array
@@ -272,7 +243,8 @@ class KoperasiPenjualanController extends Controller
             'number' => $penjualan->kode_transaksi,
             'payment_date' => $penjualan->tanggal,
             'receipt_date' => $penjualan->tanggal,
-            'method' => 'Koperasi',
+            'method' => match ($penjualan->metode_bayar) { 'tunai' => 'Tunai (TN)', 'transfer' => 'Transfer (TF)', default => 'Belum dicatat' },
+            'officer' => $penjualan->posted_by_name,
             'note' => $penjualan->catatan,
             'items' => $penjualan->details->map(fn ($detail) => [
                 'name' => $detail->nama_barang,
@@ -286,6 +258,9 @@ class KoperasiPenjualanController extends Controller
             'system_label' => 'Sistem Koperasi Permata Insani',
             'pdf_url' => route('koperasi.penjualan.kwitansi.pdf', $penjualan->id),
             'back_url' => route('koperasi.penjualan.show', $penjualan->id),
+            'edit_url' => route('koperasi.penjualan.edit', $penjualan->id),
+            'cancel_url' => route('koperasi.penjualan.destroy', $penjualan->id),
+            'manage_permission' => 'koperasi.penjualan.manage',
         ];
     }
 }

@@ -445,9 +445,9 @@
                 Laporan Tagihan Siswa
             </h1>
             <div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                <button class="btn-primary print-btn" onclick="window.print()">
-                    <i class="fas fa-print"></i> Print
-                </button>
+                <a class="btn-primary print-btn" href="{{ request()->fullUrlWithQuery(['print' => 1, 'page' => null]) }}" target="_blank" rel="noopener">
+                    <i class="fas fa-print"></i> Cetak semua hasil
+                </a>
                 <a href="{{ route('laporan.tagihan_siswa.excel', request()->query()) }}" class="btn-primary export-btn">
                     <i class="fas fa-file-excel"></i> Download Excel
                 </a>
@@ -544,9 +544,10 @@
             </form>
         </div>
 
+        <section class="report-summary-panel" aria-label="Ringkasan pembayaran siswa">
         <div class="subtotal-section">
-            <h3 class="subtotal-title">Ringkasan Laporan</h3>
-            <div class="subtotal-grid">
+            <h3 class="subtotal-title"><i class="fas fa-chart-simple" aria-hidden="true"></i><span>Ringkasan</span></h3>
+            <div class="subtotal-grid report-overview-grid">
                 <div class="subtotal-item">
                     <div class="subtotal-label">Transaksi</div>
                     <div class="subtotal-value">{{ number_format($reportSummary['transactions'], 0, ',', '.') }}</div>
@@ -563,7 +564,7 @@
                     <div class="subtotal-label">Potongan</div>
                     <div class="subtotal-value">Rp {{ number_format($reportSummary['discount'], 0, ',', '.') }}</div>
                 </div>
-                <div class="subtotal-item">
+                <div class="subtotal-item is-total">
                     <div class="subtotal-label">Total Diterima</div>
                     <div class="subtotal-value">Rp {{ number_format($reportSummary['received'], 0, ',', '.') }}</div>
                 </div>
@@ -573,27 +574,28 @@
         <!-- Subtotal Section -->
         @if(isset($subtotal) && $subtotal->count() > 0)
         <div class="subtotal-section">
-            <h3 class="subtotal-title">Subtotal Berdasarkan Metode Pembayaran</h3>
-            <div class="subtotal-grid">
-                <div class="subtotal-item">
-                    <div class="subtotal-label">Tunai</div>
+            <h3 class="subtotal-title"><i class="fas fa-wallet" aria-hidden="true"></i><span>Metode bayar</span></h3>
+            <div class="subtotal-grid report-funds-grid">
+                <div class="subtotal-item" data-payment-method="tunai">
+                    <div class="subtotal-label">TN / Tunai</div>
                     <div class="subtotal-value">Rp {{ number_format($subtotal['tunai'] ?? 0, 0, ',', '.') }}</div>
                 </div>
-                <div class="subtotal-item">
-                    <div class="subtotal-label">Transfer</div>
+                <div class="subtotal-item" data-payment-method="transfer">
+                    <div class="subtotal-label">TF / Transfer</div>
                     <div class="subtotal-value">Rp {{ number_format($subtotal['transfer'] ?? 0, 0, ',', '.') }}</div>
                 </div>
-                <div class="subtotal-item">
+                <div class="subtotal-item" data-payment-method="kjc">
                     <div class="subtotal-label">KJC</div>
                     <div class="subtotal-value">Rp {{ number_format($subtotal['kjc'] ?? 0, 0, ',', '.') }}</div>
                 </div>
-                <div class="subtotal-item">
+                <div class="subtotal-item" data-payment-method="tabungan">
                     <div class="subtotal-label">Tabungan</div>
                     <div class="subtotal-value">Rp {{ number_format($subtotal['tabungan'] ?? 0, 0, ',', '.') }}</div>
                 </div>
             </div>
         </div>
         @endif
+        </section>
 
         <!-- Table Section -->
         <div class="table-container">
@@ -605,7 +607,7 @@
             
             <div class="table-responsive">
                 @if($pembayarans->count() > 0)
-                    <table class="modern-table payment-report-table">
+                    <table class="modern-table payment-report-table" data-server-paginate data-total="{{ $pembayarans->total() }}" data-per-page="{{ \App\Support\ServerTable::size(request()) }}" data-sort-columns="id,tanggal_bayar,nomor_kwitansi,party,,,gross,diskon,jumlah_bayar,metode_bayar" data-text-sort="party" data-date-sort="tanggal_bayar">
                         <colgroup>
                             <col style="width:3%">
                             <col style="width:9%">
@@ -635,7 +637,7 @@
                         <tbody>
                             @foreach($pembayarans as $i => $p)
                                 <tr>
-                                    <td>{{ $i + 1 }}</td>
+                                    <td>{{ $pembayarans->firstItem() + $loop->index }}</td>
                                     <td>{{ optional($p->tanggal_bayar)->format('d/m/Y') }}</td>
                                     <td>
                                         <strong>{{ $p->nomor_kwitansi ?: '-' }}</strong><br>
@@ -650,8 +652,7 @@
                                         <small>{{ $p->siswa?->kelas?->tingkat ?? '-' }} {{ $p->siswa?->kelas?->nama_kelas ?? '' }}</small>
                                     </td>
                                     <td>
-                                        <strong>{{ $p->tagihan->nama_tagihan ?? 'Tagihan' }}</strong><br>
-                                        <small>{{ $p->periode ?: ($p->tagihan->periode ?? '-') }}</small>
+                                        <strong>{{ app(\App\Services\BillDisplayName::class)->report($p->tagihan, $p->periode ?: $p->tagihan?->periode) }}</strong>
                                     </td>
                                     <td>Rp {{ number_format((float) $p->jumlah_bayar + (float) $p->diskon, 0, ',', '.') }}</td>
                                     <td>{{ (float) $p->diskon > 0 ? 'Rp ' . number_format($p->diskon, 0, ',', '.') : '-' }}</td>
@@ -680,6 +681,7 @@
                             </tr>
                         </tfoot>
                     </table>
+                    @include('partials.server-pagination', ['paginator' => $pembayarans])
                 @else
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>

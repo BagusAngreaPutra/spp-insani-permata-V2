@@ -1,0 +1,57 @@
+@media screen {
+    body:has(.app-sidebar) .main-content .pi-table-pagination {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 8px 0 0;
+        padding: 8px 0 0;
+        border: 0;
+        border-top: 1px solid #eaecf0;
+        border-radius: 0;
+        background: transparent;
+        color: #667085;
+        font-size: 11.5px;
+    }
+    body:has(.app-sidebar) .main-content .pi-table-pagination[hidden] { display: none !important; }
+    .pi-page-status { min-width: 0; white-space: nowrap; }
+    .pi-page-buttons { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+    .pi-page-number { min-width: 40px; text-align: center; font-size: 11.5px; white-space: nowrap; }
+    body:has(.app-sidebar) .main-content .pi-page-buttons button {
+        display: inline-flex !important;
+        flex: 0 0 34px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 34px !important;
+        min-width: 34px !important;
+        max-width: 34px !important;
+        min-height: 34px !important;
+        height: 34px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 1px solid #e4e7ec !important;
+        border-radius: 7px !important;
+        background: #fff !important;
+        color: #475467 !important;
+        box-shadow: none !important;
+        font-size: 23px !important;
+        line-height: 1 !important;
+        cursor: pointer;
+    }
+    .pi-page-buttons button:hover:not(:disabled) { border-color: #a5b4fc !important; background: #eef2ff !important; }
+    .pi-page-buttons button:disabled { opacity: .35; cursor: default; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-server-pagination .pi-page-buttons :is(a, span.pi-page-previous, span.pi-page-next) {
+        display: inline-flex !important; align-items: center !important; justify-content: center !important;
+        width: 34px !important; min-width: 34px !important; height: 34px !important; padding: 0 !important;
+        border: 1px solid #e4e7ec !important; border-radius: 7px !important; background: #fff !important;
+        color: #475467 !important; font-size: 23px !important; text-decoration: none !important; box-shadow: none !important;
+    }
+    .pi-server-pagination [aria-disabled="true"] { opacity: .35; }
+    body:has(.app-sidebar) .main-content table.pi-responsive-table.pi-responsive-table > tbody > tr[data-page-hidden],
+    body:has(.app-sidebar) .main-content#pi-report-page table.pi-responsive-table.pi-responsive-table[data-paginate] > tbody > tr[data-page-hidden] { display: none !important; }
+}
+@media print {
+    body:has(.app-sidebar) .main-content .pi-table-pagination { display: none !important; }
+}

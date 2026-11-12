@@ -29,6 +29,9 @@
         default => 'Semua sekolah · Semua kelas',
     };
     $selectedContext .= ' · ' . ($selectedTahunAjaran?->label ?? 'Semua tahun ajaran');
+    $billingTableSearch = is_string(request('table_search')) ? trim(request('table_search')) : '';
+    $billingTableStatus = in_array(request('table_status'), ['all', 'open', 'belum_jatuh_tempo', 'sebagian', 'lunas'], true) ? request('table_status') : 'all';
+    $billingActiveFilters = (int) (bool) $selectedSekolah + (int) (bool) $selectedKelas + (int) (bool) $selectedTahunAjaran + (int) ($billingTableStatus !== 'all');
 @endphp
 
 @push('page-styles')
@@ -896,7 +899,7 @@
 
                 <div class="billing-heading-actions">
                     @if($canGenerate)
-                        <button class="billing-button is-primary" type="button" data-bs-toggle="modal" data-bs-target="#generateModal">
+                        <button class="billing-button is-primary pi-tone-primary" type="button" data-bs-toggle="modal" data-bs-target="#generateModal">
                             <i class="fas fa-file-circle-plus" aria-hidden="true"></i>
                             <span>Buat tagihan</span>
                         </button>
@@ -906,11 +909,12 @@
 
             @include('partials.transaction-tabs', ['module' => 'sekolah', 'active' => 'data'])
 
-            <section class="billing-stats" aria-label="Ringkasan tagihan kelas">
+            @fragment('billing-live')
+            <section class="billing-stats" id="billingStats" aria-label="Ringkasan tagihan kelas">
                 <article class="billing-stat">
                     <div class="billing-stat-main">
                         <span class="billing-stat-icon"><i class="fas fa-user-graduate"></i></span>
-                        <span class="billing-stat-label">Siswa ditampilkan</span>
+                        <span class="billing-stat-label">Siswa sesuai filter</span>
                         <strong class="billing-stat-value">{{ number_format($workspaceSummary['total_siswa'], 0, ',', '.') }}</strong>
                     </div>
                     <span class="billing-stat-note">{{ $selectedContext }}</span>
@@ -931,16 +935,16 @@
                         <span class="billing-stat-label">Sudah dibayar</span>
                         <strong class="billing-stat-value">{{ $formatRupiah($workspaceSummary['total_dibayar']) }}</strong>
                     </div>
-                    <span class="billing-stat-note">{{ number_format($workspaceSummary['siswa_lunas'], 0, ',', '.') }} siswa lunas</span>
+                    <span class="billing-stat-note">Potongan {{ $formatRupiah($workspaceSummary['total_diskon']) }} · {{ number_format($workspaceSummary['siswa_lunas'], 0, ',', '.') }} siswa lunas</span>
                 </article>
 
                 <article class="billing-stat is-red">
                     <div class="billing-stat-main">
                         <span class="billing-stat-icon"><i class="fas fa-hourglass-half"></i></span>
-                        <span class="billing-stat-label">Sisa tagihan</span>
+                        <span class="billing-stat-label">Sisa jatuh tempo</span>
                         <strong class="billing-stat-value">{{ $formatRupiah($workspaceSummary['sisa_bayar']) }}</strong>
                     </div>
-                    <span class="billing-stat-note">Perlu ditindaklanjuti</span>
+                    <span class="billing-stat-note">Belum jatuh tempo {{ $formatRupiah($workspaceSummary['sisa_aktual'] - $workspaceSummary['sisa_bayar']) }}</span>
                 </article>
             </section>
 
@@ -953,73 +957,14 @@
                 </div>
 
                 @if($sekolahData->isNotEmpty())
-                    <form class="billing-scope-form" id="billingScopeForm" method="GET" action="{{ route('tagihan.index.grouped') }}">
-                        <div class="billing-field">
-                            <label for="billingSchool">Sekolah</label>
-                            <select id="billingSchool" name="sekolah">
-                                <option value="" {{ !$selectedSekolah ? 'selected' : '' }}>Semua sekolah</option>
-                                @foreach($sekolahData as $sekolah)
-                                    <option value="{{ $sekolah->id }}" {{ $selectedSekolah?->id === $sekolah->id ? 'selected' : '' }}>
-                                        {{ $sekolah->nama_sekolah }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="billing-field">
-                            <label for="billingClass">Kelas</label>
-                            <select id="billingClass" name="kelas">
-                                <option value="" {{ !$selectedKelas ? 'selected' : '' }}>Semua kelas</option>
-                                @foreach($availableClasses as $kelas)
-                                    <option value="{{ $kelas->id }}" {{ $selectedKelas?->id === $kelas->id ? 'selected' : '' }}>
-                                        @if(!$selectedSekolah)
-                                            {{ $kelas->sekolah?->nama_sekolah ?? 'Sekolah belum diatur' }} ·
-                                        @endif
-                                        {{ $classLabel($kelas) }} · {{ $kelas->siswa_count }} siswa
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="billing-field">
-                            <label for="billingAcademicYear">Tahun ajaran</label>
-                            <select id="billingAcademicYear" name="tahun_ajaran">
-                                @foreach($academicYearData as $tahun)
-                                    <option value="{{ $tahun->id }}" {{ $selectedTahunAjaran?->id === $tahun->id ? 'selected' : '' }}>
-                                        {{ $tahun->label }}{{ $tahun->aktif ? ' · Aktif' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <button class="billing-button is-primary" type="submit">
-                            <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                            <span>Tampilkan</span>
-                        </button>
-                    </form>
+                    @include('tagihan.partials.table-toolbar')
                 @endif
 
+                <p id="billingSearchStatus" class="visually-hidden" role="status" aria-live="polite" hidden></p>
+                <div id="billingResults">
                 @if($studentRows->isNotEmpty())
-                    <div class="billing-table-tools">
-                        <label class="billing-search" for="billingStudentSearch">
-                            <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
-                            <input id="billingStudentSearch" type="search" placeholder="Cari nama, NIS, sekolah, atau kelas..." autocomplete="off">
-                            <button class="billing-search-clear" id="billingSearchClear" type="button" aria-label="Hapus pencarian">
-                                <i class="fas fa-xmark"></i>
-                            </button>
-                        </label>
-
-                        <div class="billing-status-filters" aria-label="Filter status tagihan">
-                            <button class="billing-status-button is-active" type="button" data-billing-filter="all">Semua</button>
-                            <button class="billing-status-button" type="button" data-billing-filter="open">Belum lunas</button>
-                            <button class="billing-status-button" type="button" data-billing-filter="belum_jatuh_tempo">Belum jatuh tempo</button>
-                            <button class="billing-status-button" type="button" data-billing-filter="sebagian">Sebagian</button>
-                            <button class="billing-status-button" type="button" data-billing-filter="lunas">Lunas</button>
-                        </div>
-                    </div>
-
                     <div class="billing-table-wrap">
-                        <table class="billing-table">
+                        <table class="billing-table pi-responsive-table" data-server-paginate data-total="{{ $studentPaginator->total() }}" data-per-page="{{ \App\Support\ServerTable::size(request()) }}" data-sort-columns="nama,status,total_tagihan,total_nominal,total_dibayar,sisa_bayar," data-text-sort="nama" data-date-sort="id" data-pi-toolbar="billing-table-toolbar">
                             <colgroup>
                                 <col class="billing-col-student">
                                 <col class="billing-col-status">
@@ -1110,6 +1055,7 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        @include('partials.server-pagination', ['paginator' => $studentPaginator])
                     </div>
 
                     <div class="billing-empty" id="billingNoResults" hidden>
@@ -1121,7 +1067,7 @@
                     </div>
 
                     <footer class="billing-panel-footer">
-                        <span><strong id="billingResultCount">{{ $studentRows->count() }}</strong> dari {{ $studentRows->count() }} siswa ditampilkan</span>
+                        <span>Ringkasan mencakup {{ number_format($studentPaginator->total(), 0, ',', '.') }} siswa sesuai filter.</span>
                         <span>Gunakan tombol Bayar untuk membuka rincian tagihan siswa.</span>
                     </footer>
                 @elseif($sekolahData->isEmpty())
@@ -1136,12 +1082,14 @@
                     <div class="billing-empty">
                         <div>
                             <i class="fas fa-user-graduate"></i>
-                            <strong>Belum ada siswa</strong>
-                            <span>Tidak ada siswa pada cakupan {{ strtolower($selectedContext) }}.</span>
+                            <strong>Siswa tidak ditemukan</strong>
+                            <span>Ubah pencarian atau filter untuk melihat hasil lainnya.</span>
                         </div>
                     </div>
                 @endif
+                </div>
             </section>
+            @endfragment
         </div>
     </div>
 </div>
@@ -1187,63 +1135,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const scopeForm = document.getElementById('billingScopeForm');
-    const schoolSelect = document.getElementById('billingSchool');
-    const classSelect = document.getElementById('billingClass');
-    const academicYearSelect = document.getElementById('billingAcademicYear');
-    const searchInput = document.getElementById('billingStudentSearch');
-    const clearSearch = document.getElementById('billingSearchClear');
-    const rows = [...document.querySelectorAll('[data-student-row]')];
-    const filterButtons = [...document.querySelectorAll('[data-billing-filter]')];
-    const noResults = document.getElementById('billingNoResults');
-    const resultCount = document.getElementById('billingResultCount');
-    let activeStatus = 'all';
-
-    schoolSelect?.addEventListener('change', () => {
-        if (classSelect) classSelect.disabled = true;
-        scopeForm?.submit();
-    });
-
-    classSelect?.addEventListener('change', () => scopeForm?.submit());
-    academicYearSelect?.addEventListener('change', () => scopeForm?.submit());
-
-    const filterRows = () => {
-        const query = searchInput?.value.trim().toLocaleLowerCase('id-ID') ?? '';
-        let visibleCount = 0;
-
-        rows.forEach((row) => {
-            const matchesSearch = !query || row.dataset.search.includes(query);
-            const status = row.dataset.status;
-            const matchesStatus = activeStatus === 'all'
-                || status === activeStatus
-                || (activeStatus === 'open' && ['belum', 'sebagian', 'belum_jatuh_tempo'].includes(status));
-            const visible = matchesSearch && matchesStatus;
-
-            row.hidden = !visible;
-            if (visible) visibleCount++;
-        });
-
-        clearSearch?.classList.toggle('is-visible', query.length > 0);
-        if (resultCount) resultCount.textContent = visibleCount.toLocaleString('id-ID');
-        if (noResults) noResults.hidden = visibleCount !== 0;
-    };
-
-    searchInput?.addEventListener('input', filterRows);
-
-    clearSearch?.addEventListener('click', () => {
-        searchInput.value = '';
-        searchInput.focus();
-        filterRows();
-    });
-
-    filterButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-            activeStatus = button.dataset.billingFilter;
-            filterButtons.forEach((item) => item.classList.toggle('is-active', item === button));
-            filterRows();
-        });
-    });
-
     const generateForm = document.getElementById('generateAllBillsForm');
     const generateButton = document.getElementById('generateAllBillsButton');
 

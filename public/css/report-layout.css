@@ -1,0 +1,218 @@
+/* Report typography and printable tables. Loaded after the application theme. */
+body:has(.app-sidebar) #pi-report-page.pi-report-page,
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(table, input, select, textarea, button) {
+    font-family: "Manrope", system-ui, sans-serif !important;
+}
+
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-note { font-family: inherit !important; font-size: 11px !important; line-height: 1.5 !important; font-weight: 400 !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-overview-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-funds-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page table.all-transaction-table { width: 100% !important; min-width: 1100px !important; table-layout: fixed !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page table.all-transaction-table :is(th, td) { padding: 12px 10px !important; vertical-align: top !important; font-size: 12px !important; line-height: 1.5 !important; overflow-wrap: break-word !important; word-break: normal !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page table .report-money { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page table.all-transaction-table :is(th, td):nth-child(2) { white-space: nowrap !important; }
+@media screen and (max-width: 1100px) {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-overview-grid,
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-funds-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media screen and (max-width: 480px) {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-overview-grid,
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-funds-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media print {
+    @page report-sheet { size: A4 landscape; margin: 10mm; }
+    #pi-report-page { page: report-sheet; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page { font-family: "Manrope", system-ui, sans-serif !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) { padding: 2mm !important; margin-bottom: 3mm !important; break-inside: avoid; page-break-inside: avoid; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-overview-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-funds-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-label, .subtotal-label, .report-note, small) { font-size: 7.5pt !important; line-height: 1.4 !important; font-family: inherit !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-value, .subtotal-value) { font-size: 9pt !important; line-height: 1.4 !important; white-space: nowrap; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page table.modern-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; table-layout: fixed !important; font-family: "Manrope", system-ui, sans-serif !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page table.modern-table :is(th, td) { padding: 1.6mm 1.5mm !important; font-size: 8pt !important; line-height: 1.35 !important; font-family: inherit !important; vertical-align: top !important; overflow-wrap: break-word !important; word-break: normal !important; white-space: normal !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page table.modern-table .report-money { white-space: nowrap !important; text-align: right !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page table.modern-table thead { display: table-header-group !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page table.modern-table tfoot { display: table-row-group !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page table.modern-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-note { margin-top: 1mm; color: #444 !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .subtotal-title { margin-bottom: 2mm !important; font-size: 9pt !important; }
+}
+
+/* Compact summaries: inline facts rather than individual statistic cards. */
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.subtotal-title, .summary-label, .subtotal-label, .summary-value, .subtotal-value) { font-family: "Manrope", system-ui, sans-serif !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) {
+    display: flex !important;
+    align-items: baseline !important;
+    flex-wrap: wrap !important;
+    gap: 8px 20px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 8px !important;
+    border: 1px solid #e4e7ec !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) .subtotal-title {
+    flex: 0 0 138px;
+    margin: 0 !important;
+    color: #344054 !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
+    line-height: 1.6 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-grid, .subtotal-grid) {
+    display: flex !important;
+    flex: 1 1 600px;
+    flex-wrap: wrap !important;
+    align-items: baseline !important;
+    gap: 6px 20px !important;
+    min-width: 0;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-item, .subtotal-item) {
+    display: inline-flex !important;
+    align-items: baseline !important;
+    flex-wrap: wrap;
+    gap: 4px 6px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-label, .subtotal-label) {
+    display: inline !important;
+    margin: 0 !important;
+    color: #667085 !important;
+    font-size: 12px !important;
+    line-height: 1.6 !important;
+    font-weight: 400 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-value, .subtotal-value) {
+    display: inline !important;
+    margin: 0 !important;
+    color: #101828 !important;
+    font-size: 12px !important;
+    line-height: 1.6 !important;
+    font-weight: 700 !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) .report-note {
+    display: none !important;
+}
+@media screen and (max-width: 600px) {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) { gap: 4px 12px !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) .subtotal-title { flex-basis: 100%; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-grid, .subtotal-grid) { flex-basis: 100%; gap: 4px 16px !important; }
+}
+@media print {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) {
+        padding: 1.5mm 2mm !important;
+        gap: 1mm 4mm !important;
+        margin-bottom: 2mm !important;
+        border: 0 !important;
+        border-bottom: 1px solid #bbb !important;
+        border-radius: 0 !important;
+    }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) .subtotal-title { flex-basis: 32mm; font-size: 8pt !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-grid, .subtotal-grid) { flex-basis: 180mm; gap: 1mm 4mm !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.summary-label, .subtotal-label, .summary-value, .subtotal-value) { font-size: 8pt !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page :is(.summary-section, .subtotal-section) :is(.subtotal-title, .summary-label, .subtotal-label, .summary-value, .subtotal-value) { color: #111 !important; }
+}
+
+/* A single compact panel, with consistent spacing for each label and amount. */
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel {
+    overflow: hidden;
+    margin-bottom: 16px;
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .03);
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-section, .subtotal-section) {
+    align-items: center !important;
+    gap: 8px 16px !important;
+    padding: 11px 16px !important;
+    margin: 0 !important;
+    background: #fff !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-section, .subtotal-section) + :is(.summary-section, .subtotal-section) {
+    background: #fafbfc !important;
+    border-top: 1px solid #eaecf0 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel .subtotal-title {
+    display: flex;
+    align-items: center;
+    flex: 0 0 120px;
+    gap: 9px;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel .subtotal-title > i {
+    display: grid;
+    place-items: center;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    background: #eef2ff;
+    border-radius: 6px;
+    color: #6366f1;
+    font-size: 11px;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-grid, .subtotal-grid) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 8px 0 !important;
+    flex: 1 1 600px;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-item, .subtotal-item) {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start !important;
+    justify-content: center;
+    gap: 2px !important;
+    min-width: 0;
+    padding: 0 14px !important;
+    border-left: 1px solid #e4e7ec !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-item, .subtotal-item):first-child { border-left: 0 !important; padding-left: 0 !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-label, .subtotal-label) {
+    font-size: 10.5px !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+    letter-spacing: .01em;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-value, .subtotal-value) {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.4 !important;
+}
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel .is-total :is(.summary-value, .subtotal-value) { color: #087451 !important; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method] { --method-color: #98a2b3; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method="tunai"] { --method-color: #12b76a; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method="transfer"] { --method-color: #6172f3; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method="kjc"] { --method-color: #9e77ed; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method="tabungan"] { --method-color: #f79009; }
+body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method] :is(.summary-label, .subtotal-label)::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 5px; border-radius: 50%; background: var(--method-color); vertical-align: middle; }
+@media screen and (max-width: 1100px) {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-grid, .subtotal-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px 0 !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-item, .subtotal-item):nth-child(odd) { border-left: 0 !important; padding-left: 0 !important; }
+}
+@media screen and (max-width: 600px) {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel .subtotal-title { flex-basis: 100%; margin-bottom: 4px !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-section, .subtotal-section) { padding: 12px 14px !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-value, .subtotal-value) { font-size: 12px !important; }
+}
+@media print {
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel { margin: 0 0 2mm; border: 0; border-radius: 0; box-shadow: none; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-section, .subtotal-section) { align-items: baseline !important; padding: 1.5mm 2mm !important; gap: 1mm 4mm !important; border: 0 !important; border-bottom: 1px solid #bbb !important; background: #fff !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel .subtotal-title { flex-basis: 32mm; font-size: 8pt !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel .subtotal-title > i { display: none; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-grid, .subtotal-grid) { display: flex !important; flex-basis: 180mm; gap: 1mm 4mm !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-item, .subtotal-item) { display: inline-flex !important; flex-direction: row; align-items: baseline !important; gap: 4px !important; padding: 0 !important; border: 0 !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel :is(.summary-label, .subtotal-label, .summary-value, .subtotal-value) { font-size: 8pt !important; color: #111 !important; }
+    body:has(.app-sidebar) #pi-report-page.pi-report-page .report-summary-panel [data-payment-method] :is(.summary-label, .subtotal-label)::before { display: none; }
+}

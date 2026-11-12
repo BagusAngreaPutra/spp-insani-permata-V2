@@ -1,50 +1,39 @@
-<section class="space-y-6">
+<section class="account-panel account-panel-danger" aria-labelledby="account-delete-title">
     <header>
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-            {{ __('Hapus Akun') }}
-        </h2>
-
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {{ __('Setelah akun admin Anda dihapus, semua sumber daya dan datanya akan dihapus secara permanen. Pastikan Anda sudah membackup data yang diperlukan.') }}
-        </p>
+        <h2 id="account-delete-title">Hapus Akun</h2>
+        <p>Penghapusan akun bersifat permanen. Pastikan data yang diperlukan sudah dicadangkan.</p>
     </header>
-
-    <x-danger-button x-data=""
-        x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')">
-        {{ __('Hapus Akun') }}
-    </x-danger-button>
-
-    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
-        <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
-            @csrf
-            @method('delete')
-
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                {{ __('Apakah Anda yakin ingin menghapus akun ini?') }}
-            </h2>
-
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                {{ __('Setelah akun admin Anda dihapus, semua sumber daya dan datanya akan dihapus secara permanen. Masukkan kata sandi Anda untuk konfirmasi bahwa Anda ingin menghapus akun ini.') }}
-            </p>
-
-            <div class="mt-6">
-                <x-input-label for="password" value="{{ __('Kata Sandi') }}" class="sr-only" />
-
-                <x-text-input id="password" name="password" type="password" class="mt-1 block w-3/4"
-                    placeholder="{{ __('Kata Sandi') }}" />
-
-                <x-input-error :messages="$errors->userDeletion->get('password')" class="mt-2" />
-            </div>
-
-            <div class="mt-6 flex justify-end">
-                <x-secondary-button x-on:click="$dispatch('close')">
-                    {{ __('Batal') }}
-                </x-secondary-button>
-
-                <x-danger-button class="ms-3">
-                    {{ __('Hapus Akun') }}
-                </x-danger-button>
-            </div>
-        </form>
-    </x-modal>
+    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">Hapus akun</button>
 </section>
+<div class="modal fade account-modal" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="deleteAccountModalTitle">Hapus akun ini?</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form method="POST" action="{{ route('profile.destroy') }}">
+                @csrf
+                @method('DELETE')
+                <div class="modal-body">
+                    <p>Masukkan kata sandi saat ini untuk mengonfirmasi penghapusan permanen akun Anda.</p>
+                    <input type="text" name="username" value="{{ $admin->username }}" autocomplete="username" hidden>
+                    <label for="account_delete_password">Kata Sandi Saat Ini</label>
+                    <input id="account_delete_password" name="password" type="password" class="form-control" required autocomplete="current-password">
+                    <x-input-error :messages="$errors->userDeletion->get('password')" class="mt-2" />
+                    <div class="account-actions">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-danger">Hapus akun permanen</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@if($errors->userDeletion->isNotEmpty())
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteAccountModal')).show();
+    });
+</script>
+@endif

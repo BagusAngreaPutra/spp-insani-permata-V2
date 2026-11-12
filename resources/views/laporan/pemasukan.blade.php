@@ -320,7 +320,7 @@
                 <i class="fas fa-money-bill-wave"></i> Laporan Pemasukan Lainnya
             </h2>
             <div>
-                <button onclick="window.print()" class="btn-primary">
+                <button onclick="document.fonts.ready.then(() => window.print())" class="btn-primary">
                     <i class="fas fa-print"></i> Print
                 </button>
                 <a href="{{ route('laporan.pemasukan.excel', request()->query()) }}" class="btn-primary">Download Excel</a>

@@ -153,7 +153,7 @@
         <div class="page-header no-print">
             <h2 class="page-title"><i class="fas fa-store"></i> Laporan Koperasi</h2>
             <div style="display:flex; gap:0.75rem;">
-                <button onclick="window.print()" class="btn-primary"><i class="fas fa-print"></i> Print</button>
+                <button onclick="document.fonts.ready.then(() => window.print())" class="btn-primary"><i class="fas fa-print"></i> Print</button>
                 <a href="{{ route('laporan.koperasi.excel', request()->query()) }}" class="btn-primary">
                     <i class="fas fa-file-excel"></i> Download Excel
                 </a>

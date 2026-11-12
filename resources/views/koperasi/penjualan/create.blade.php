@@ -2,6 +2,11 @@
 @include('layouts.sidebar')
 
 @section('content')
+@php
+    $editing = isset($penjualan);
+    $defaultItems = $editing ? $penjualan->details->map(fn ($detail) => ['koperasi_id' => $detail->koperasi_id, 'jumlah' => $detail->jumlah])->all() : array_fill(0, 3, []);
+    $formItems = old('items', $defaultItems);
+@endphp
 @push('page-styles')
 <style>
     .main-content {
@@ -143,17 +148,18 @@
         ])
 
         <div class="form-card">
-            <h2 class="page-title"><i class="fas fa-cash-register"></i> Transaksi Penjualan Baru</h2>
+            <h2 class="page-title"><i class="fas fa-cash-register"></i> {{ $editing ? 'Koreksi '.$penjualan->kode_transaksi : 'Transaksi Penjualan Baru' }}</h2>
 
             @if($errors->any())
                 <div class="alert-error">
                     Periksa kembali transaksi yang dimasukkan.
-                    @error('items')<br>{{ $message }}@enderror
+                    @foreach($errors->all() as $error)<br>{{ $error }}@endforeach
                 </div>
             @endif
 
-            <form action="{{ route('koperasi.penjualan.store') }}" method="POST" id="posForm">
+            <form action="{{ $editing ? route('koperasi.penjualan.update', $penjualan->id) : route('koperasi.penjualan.store') }}" method="POST" id="posForm">
                 @csrf
+                @if($editing) @method('PUT') @endif
 
                 <div class="student-tools">
                     <div class="student-tools-title">Filter bantu pencarian siswa, opsional</div>
@@ -208,7 +214,7 @@
                                     data-nama="{{ $item->nama }}"
                                     data-nis="{{ $item->nis }}"
                                     data-search="{{ strtolower($item->nama . ' ' . $item->nis . ' ' . ($item->kelas->kelas ?? '') . ' ' . ($item->sekolah->nama_sekolah ?? '')) }}"
-                                    {{ old('siswa_id') == $item->id ? 'selected' : '' }}>
+                                    {{ old('siswa_id', $penjualan->siswa_id ?? null) == $item->id ? 'selected' : '' }}>
                                     {{ $item->nama }} - {{ $item->nis }} ({{ $item->kelas->kelas ?? '-' }})
                                 </option>
                             @endforeach
@@ -219,13 +225,27 @@
 
                     <div class="form-group">
                         <label for="tanggal">Tanggal</label>
-                        <input type="date" name="tanggal" id="tanggal" value="{{ old('tanggal', date('Y-m-d')) }}" required>
+                        <input type="date" name="tanggal" id="tanggal" value="{{ old('tanggal', isset($penjualan) ? $penjualan->tanggal->format('Y-m-d') : date('Y-m-d')) }}" required>
                         @error('tanggal')<small>{{ $message }}</small>@enderror
                     </div>
 
                     <div class="form-group full">
+                        <label for="metode_bayar">Metode pembayaran</label>
+                        <select id="metode_bayar" name="metode_bayar" required>
+                            <option value="">Pilih metode</option>
+                            <option value="tunai" @selected(old('metode_bayar', $penjualan->metode_bayar ?? '') === 'tunai')>Tunai (TN)</option>
+                            <option value="transfer" @selected(old('metode_bayar', $penjualan->metode_bayar ?? '') === 'transfer')>Transfer (TF)</option>
+                        </select>
+                    </div>
+                    @if($editing)
+                    <div class="form-group full">
+                        <label for="alasan_koreksi">Alasan koreksi</label>
+                        <textarea name="alasan_koreksi" id="alasan_koreksi" minlength="5" maxlength="1000" required>{{ old('alasan_koreksi') }}</textarea>
+                    </div>
+                    @endif
+                    <div class="form-group full">
                         <label for="catatan">Catatan</label>
-                        <textarea name="catatan" id="catatan" rows="2" placeholder="Opsional">{{ old('catatan') }}</textarea>
+                        <textarea name="catatan" id="catatan" rows="2" placeholder="Opsional">{{ old('catatan', $penjualan->catatan ?? '') }}</textarea>
                         @error('catatan')<small>{{ $message }}</small>@enderror
                     </div>
                 </div>
@@ -242,7 +262,7 @@
                         </tr>
                     </thead>
                     <tbody id="itemsBody">
-                        @for($i = 0; $i < 3; $i++)
+                        @foreach($formItems as $i => $formItem)
                             <tr class="item-row">
                                 <td>
                                     <select name="items[{{ $i }}][koperasi_id]" class="barang-select">
@@ -251,7 +271,7 @@
                                             <option value="{{ $item->id }}"
                                                 data-harga="{{ (float) $item->harga_jual }}"
                                                 data-stok="{{ $item->stok }}"
-                                                {{ old("items.$i.koperasi_id") == $item->id ? 'selected' : '' }}>
+                                                {{ ($formItem['koperasi_id'] ?? null) == $item->id ? 'selected' : '' }}>
                                                 {{ $item->nama_barang }}
                                             </option>
                                         @endforeach
@@ -261,13 +281,13 @@
                                 <td class="stok-cell">-</td>
                                 <td class="harga-cell">Rp 0</td>
                                 <td>
-                                    <input type="number" name="items[{{ $i }}][jumlah]" class="jumlah-input" min="1" value="{{ old("items.$i.jumlah") }}">
+                                    <input type="number" name="items[{{ $i }}][jumlah]" class="jumlah-input" min="1" value="{{ $formItem['jumlah'] ?? '' }}">
                                     @error("items.$i.jumlah")<small>{{ $message }}</small>@enderror
                                 </td>
                                 <td class="subtotal-cell">Rp 0</td>
                                 <td><button type="button" class="btn-remove">Hapus</button></td>
                             </tr>
-                        @endfor
+                        @endforeach
                     </tbody>
                 </table>
 
@@ -280,7 +300,7 @@
 
                 <div class="form-actions">
                     <a href="{{ route('koperasi.penjualan.index') }}" class="btn-cancel">Batal</a>
-                    <button type="submit" class="btn-submit">Simpan Transaksi</button>
+                    <button type="submit" class="btn-submit">{{ $editing ? 'Simpan Koreksi' : 'Simpan Transaksi' }}</button>
                 </div>
             </form>
         </div>
@@ -373,6 +393,7 @@
     }
 
     function filterSiswaOptions() {
+        const previousStudent = siswaSelect.value;
         const keyword = siswaSearch.value.trim().toLowerCase();
         const sekolahId = filterSekolah.value;
         const kelasId = filterKelas.value;
@@ -393,6 +414,7 @@
             option.textContent = optionText(option);
             siswaSelect.appendChild(option);
         });
+        siswaSelect.value = previousStudent;
 
         const stillVisible = visibleSiswaOptions.some(option => option.value === siswaSelect.value);
         if (!stillVisible) {

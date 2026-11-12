@@ -883,6 +883,7 @@
 
     <div class="content-area">
         <div class="history-page">
+            @if($errors->any())<div class="history-alert" role="alert">{{ $errors->first() }}</div>@endif
             @if(session('success'))
                 <div class="history-alert">
                     <i class="fas fa-circle-check" aria-hidden="true"></i>
@@ -910,6 +911,7 @@
                     <p class="history-eyebrow">Pembayaran</p>
                     <h1 class="history-title" data-page-title>{{ $historyHeading[0] }}</h1>
                     <p class="history-subtitle">{{ $historyHeading[1] }}</p>
+                    <p class="history-subtitle">Buka rincian transaksi untuk mencetak, mengoreksi, atau membatalkan pembayaran.</p>
                 </div>
 
                 <div class="history-heading-actions">
@@ -1109,29 +1111,40 @@
                                             <h3 class="history-detail-title">{{ $isIncome ? 'Rincian pemasukan' : ($isCooperative ? 'Rincian barang' : 'Rincian tagihan') }}</h3>
                                             <span class="history-detail-caption">{{ $items->count() }} item dalam transaksi {{ $reference }}</span>
                                         </div>
-                                        <div class="history-detail-actions">
+                                        <div class="history-detail-actions transaction-actions">
                                             @if($canCorrectPayment && $correctionUrl)
-                                                <a class="history-button is-compact is-warning" href="{{ $correctionUrl }}">
+                                                <a class="history-button is-compact transaction-action" href="{{ $correctionUrl }}">
                                                     <i class="fas fa-pen-to-square" aria-hidden="true"></i>
                                                     <span>Koreksi transaksi</span>
                                                 </a>
                                             @endif
                                             @if($receiptUrl)
-                                                <a class="history-button is-compact" href="{{ $receiptUrl }}" target="_blank" rel="noopener">
+                                                <a class="history-button is-compact transaction-action" href="{{ $receiptUrl }}" target="_blank" rel="noopener">
                                                     <i class="fas fa-print" aria-hidden="true"></i>
                                                     <span>Cetak kwitansi</span>
                                                 </a>
                                             @elseif($isIncome && $canManageIncome)
-                                                <a class="history-button is-compact" href="{{ route('pemasukan.show', $tx['ids']) }}">
+                                                <a class="history-button is-compact transaction-action" href="{{ route('pemasukan.show', $tx['ids']) }}">
                                                     <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
                                                     <span>Lihat data pemasukan</span>
                                                 </a>
                                             @endif
                                             @if($receiptPdfUrl)
-                                                <a class="history-button is-compact is-pdf" href="{{ $receiptPdfUrl }}" target="_blank" rel="noopener">
+                                                <a class="history-button is-compact transaction-action" href="{{ $receiptPdfUrl }}" target="_blank" rel="noopener">
                                                     <i class="fas fa-file-pdf" aria-hidden="true"></i>
                                                     <span>Download PDF</span>
                                                 </a>
+                                            @endif
+                                            @if($isSchool && $canCorrectPayment && $firstItem)
+                                                <form method="POST" action="{{ route('pembayaran.destroy', $firstItem->id) }}" data-confirm-reason data-confirm-title="Batalkan / hapus transaksi" data-confirm-message="Seluruh item pada kwitansi ini dibatalkan. Sisa tagihan dan kas masuk akan dihitung ulang." data-confirm-label="Batalkan transaksi" data-confirm-tone="danger">
+                                                    @csrf @method('DELETE')
+                                                    <input type="hidden" name="alasan_pembatalan" value="">
+                                                    <button class="transaction-action is-danger btn-danger" type="submit"><i class="fas fa-trash-can" aria-hidden="true"></i><span>Batalkan / Hapus</span></button>
+                                                </form>
+                                            @endif
+                                            @if($isCooperative && auth('web')->user()?->hasPermission('koperasi.penjualan.manage'))
+                                                <a class="history-button is-compact transaction-action" href="{{ route('koperasi.penjualan.edit', $tx['ids']) }}">Koreksi koperasi</a>
+                                                <a class="history-button is-compact transaction-action" href="{{ route('koperasi.penjualan.show', $tx['ids']) }}">Detail / Batalkan</a>
                                             @endif
                                         </div>
                                     </div>

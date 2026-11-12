@@ -176,20 +176,33 @@
                     <h1 class="receipt-title">{{ $receipt['document_label'] ?? 'Kwitansi pembayaran' }}</h1>
                     <p class="receipt-subtitle">Pratinjau A5 portrait. Tampilan ini sama dengan dokumen cetak dan PDF.</p>
                 </div>
-                <div class="receipt-actions">
-                    @if(!empty($receipt['back_url']))
-                        <a class="receipt-button" href="{{ $receipt['back_url'] }}"><i class="fas fa-arrow-left"></i><span>Kembali</span></a>
+                <div class="receipt-actions transaction-actions">
+                    @if(!empty($receipt['edit_url']) && Auth::guard('web')->user()?->hasPermission($receipt['manage_permission']))
+                        <a class="receipt-button transaction-action" href="{{ $receipt['edit_url'] }}"><i class="fas fa-pen"></i><span>Koreksi transaksi</span></a>
                     @endif
-                    <button class="receipt-button" type="button" onclick="window.print()"><i class="fas fa-print"></i><span>Cetak</span></button>
+                    @if(!empty($receipt['back_url']))
+                        <a class="receipt-button transaction-action" href="{{ $receipt['back_url'] }}"><i class="fas fa-arrow-left"></i><span>Kembali</span></a>
+                    @endif
+                    <button class="receipt-button transaction-action" type="button" onclick="window.print()"><i class="fas fa-print"></i><span>Cetak</span></button>
                     @if($pdfUrl !== '#')
                         <a class="receipt-button" href="{{ $pdfPreviewUrl }}" target="_blank"><i class="fas fa-eye"></i><span>Lihat PDF</span></a>
-                        <a class="receipt-button is-primary" href="{{ $pdfUrl }}"><i class="fas fa-file-arrow-down"></i><span>Unduh PDF</span></a>
+                        <a class="receipt-button transaction-action" href="{{ $pdfUrl }}"><i class="fas fa-file-arrow-down"></i><span>Unduh PDF</span></a>
+                    @endif
+                    @if(!empty($receipt['cancel_url']) && Auth::guard('web')->user()?->hasPermission($receipt['manage_permission']))
+                        <form method="POST" action="{{ $receipt['cancel_url'] }}" data-confirm-reason data-confirm-title="Batalkan / hapus transaksi" data-confirm-message="Seluruh transaksi pada kwitansi ini dibatalkan. Saldo tagihan atau stok serta kas masuk akan dihitung ulang." data-confirm-label="Batalkan transaksi" data-confirm-tone="danger">
+                            @csrf @method('DELETE')
+                            <input type="hidden" name="alasan_pembatalan" value="">
+                            <button type="submit" class="transaction-action is-danger btn-danger"><i class="fas fa-trash-can" aria-hidden="true"></i><span>Batalkan / Hapus transaksi</span></button>
+                        </form>
                     @endif
                 </div>
             </header>
 
-            <div class="receipt-paper" data-receipt-paper>
-                @include('tagihan.kwitansi._document', ['receipt' => $receipt])
+            <p class="receipt-preview-help">Geser pratinjau ke samping untuk melihat seluruh kwitansi.</p>
+            <div class="receipt-preview" tabindex="0" role="region" aria-label="Pratinjau kwitansi, dapat digeser ke samping">
+                <div class="receipt-paper" data-receipt-paper>
+                    @include('tagihan.kwitansi._document', ['receipt' => $receipt])
+                </div>
             </div>
         </div>
     </div>

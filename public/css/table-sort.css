@@ -1,70 +1,73 @@
-/* Shared sorting affordance for every data table in the Permata Insani UI. */
-.pi-table-sortbar {
-    display: flex;
-    min-height: 42px;
-    margin: 0 0 10px;
-    padding: 5px 6px 5px 10px;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 7px;
-    color: #344054;
-    background: #f8fafc;
-    border: 1px solid #e4e7ec;
-    border-radius: 9px;
-}
-
-.pi-table-sortbar-label {
-    display: inline-flex;
-    margin-right: auto;
-    align-items: center;
-    gap: 7px;
-    color: #344054;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
-}
-
-.pi-table-sortbar-icon {
-    display: inline-flex;
-    width: 26px;
-    height: 26px;
-    align-items: center;
-    justify-content: center;
-    color: #6941c6;
-    background: #f4ebff;
-    border: 1px solid #e9d7fe;
-    border-radius: 7px;
-}
-
-.pi-table-sortbar-icon svg {
-    width: 15px;
-    height: 15px;
-}
-
-.pi-table-sortbar-select {
-    width: auto !important;
-    min-width: 142px !important;
-    max-width: 220px !important;
-    height: 30px !important;
-    min-height: 30px !important;
-    margin: 0 !important;
-    padding: 0 30px 0 10px !important;
-    color: #344054 !important;
-    background-color: #fff !important;
-    border: 1px solid #d0d5dd !important;
-    border-radius: 7px !important;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04) !important;
-    font: inherit !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    line-height: 28px !important;
-    cursor: pointer;
-}
-
-.pi-table-sortbar-select:focus {
-    border-color: #8098f9 !important;
-    outline: 3px solid rgba(97, 114, 243, 0.13) !important;
+/* Table controls share one quiet utility row; options open on demand. */
+@media screen {
+    body:has(.app-sidebar) .main-content .pi-table-sortbar {
+        display: flex;
+        width: 100%;
+        min-height: 34px;
+        max-width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0 0 6px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+    .pi-table-meta { color: #667085; font-size: 11.5px; line-height: 1.4; }
+    body:has(.app-sidebar) .main-content .pi-table-sortbar .pi-table-options-button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 34px !important;
+        width: 34px !important;
+        min-width: 34px !important;
+        max-width: 34px !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        color: #667085 !important;
+        background: #fff !important;
+        border: 1px solid #e4e7ec !important;
+        border-radius: 7px !important;
+        box-shadow: none !important;
+        cursor: pointer;
+    }
+    .pi-table-options-button svg { width: 17px; height: 17px; }
+    body:has(.app-sidebar) .main-content .pi-table-sortbar[data-active="true"] .pi-table-options-button,
+    body:has(.app-sidebar) .main-content .pi-table-sortbar .pi-table-options-button[aria-expanded="true"] {
+        color: #4f46e5 !important;
+        border-color: #c7d2fe !important;
+        background: #eef2ff !important;
+    }
+    .pi-table-options-button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+    .pi-table-options-panel {
+        position: fixed;
+        inset: auto;
+        z-index: 1080;
+        width: 264px;
+        max-width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+        margin: 0;
+        padding: 16px;
+        border: 1px solid #e4e7ec;
+        border-radius: 12px;
+        color: #344054;
+        background: #fff;
+        box-shadow: 0 12px 36px rgba(16, 24, 40, .16);
+        font-family: inherit;
+        font-size: 13px;
+    }
+    .pi-table-options-panel:popover-open,
+    .pi-table-options-panel:not([popover]):not([hidden]) { display: grid; gap: 16px; }
+    .pi-table-options-panel[hidden] { display: none !important; }
+    .pi-table-options-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pi-table-options-heading strong { font-size: 13px; font-weight: 700; }
+    .pi-table-options-close { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; color: #667085; background: #f8fafc; font-size: 22px; line-height: 1; cursor: pointer; }
+    .pi-table-options-panel :is(.pi-table-option, .pi-page-size) { display: grid; gap: 7px; margin: 0; font-size: 12px; font-weight: 600; }
+    .pi-table-options-panel select { width: 100%; min-width: 0; height: 38px; padding: 6px 28px 6px 10px; border: 1px solid #d0d5dd; border-radius: 7px; color: #344054; background-color: #fff; font: inherit; font-weight: 500; }
+    .pi-table-options-panel select:focus-visible { outline: 2px solid #818cf8; outline-offset: 1px; }
 }
 
 table[data-pi-sortable="true"] thead th.pi-sortable-column {
@@ -154,30 +157,12 @@ table[data-pi-sortable="true"] thead th.pi-sortable-column[aria-sort="descending
 }
 
 @media (max-width: 760px) {
-    .pi-table-sortbar {
-        flex-wrap: wrap;
-        padding: 7px;
-    }
-
-    .pi-table-sortbar-label {
-        width: 100%;
-    }
-
-    .pi-table-sortbar-select {
-        min-width: 0 !important;
-        max-width: none !important;
-        flex: 1 1 150px;
-    }
-
-    .pi-sort-indicator {
-        width: 13px;
-        height: 13px;
-        margin-inline-start: 4px;
-    }
+    .pi-sort-indicator { width: 13px; height: 13px; margin-inline-start: 4px; }
 }
 
 @media print {
     .pi-table-sortbar,
+    .pi-table-options-panel,
     .pi-sort-indicator,
     .pi-sort-sr {
         display: none !important;

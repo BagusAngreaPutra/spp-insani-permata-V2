@@ -1,0 +1,68 @@
+/* Only summary cards and GET filters in the administration menus. */
+@media screen {
+    body:has(.app-sidebar) .main-content :is(.overview-stats, .billing-stats, .payment-stats, .stats-grid, .income-summary) { gap: 10px !important; margin-bottom: 14px !important; }
+    body:has(.app-sidebar) .main-content :is(.overview-stat, .billing-stat, .payment-stat, .stat-card) { min-height: 0 !important; border-radius: 9px !important; box-shadow: 0 1px 2px rgba(16,24,40,.03) !important; transform: none !important; }
+    body:has(.app-sidebar) .main-content :is(.overview-stat-main, .billing-stat-main) { position: relative; min-height: 64px !important; padding: 10px 14px 8px 48px !important; }
+    body:has(.app-sidebar) .main-content :is(.overview-stat-icon, .billing-stat-icon) { position: absolute !important; top: 12px !important; left: 12px !important; right: auto !important; width: 25px !important; height: 25px !important; margin: 0 !important; border-radius: 7px !important; font-size: 11px !important; }
+    body:has(.app-sidebar) .main-content :is(.overview-stat-label, .billing-stat-label, .payment-stat-label, .stat-label) { min-height: 0 !important; height: auto !important; margin: 0 0 4px !important; font-size: 11px !important; line-height: 1.35 !important; font-weight: 500 !important; }
+    body:has(.app-sidebar) .main-content :is(.overview-stat-value, .billing-stat-value, .stat-value),
+    body:has(.app-sidebar) .main-content .payment-stat > strong { margin: 0 !important; font-size: clamp(14px, 1.2vw, 18px) !important; line-height: 1.35 !important; letter-spacing: -.015em !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
+    body:has(.app-sidebar) .main-content :is(.overview-stat-footer, .billing-stat-note) { min-height: 0 !important; padding: 6px 12px !important; font-size: 10px !important; line-height: 1.4 !important; }
+    body:has(.app-sidebar) .main-content :is(.payment-stat, .stat-card) { padding: 12px 14px !important; }
+    body:has(.app-sidebar) .main-content .payment-page .payment-stat { padding-left: 48px !important; }
+    body:has(.app-sidebar) .main-content .payment-page .payment-stat-icon { left: 12px !important; }
+    body:has(.app-sidebar) .main-content :is(.payment-stat-icon, .stat-icon) { width: 25px !important; height: 25px !important; min-width: 25px !important; border-radius: 7px !important; font-size: 11px !important; }
+    body:has(.app-sidebar) .main-content .income-summary { padding: 12px 14px !important; border: 1px solid #e4e7ec !important; border-radius: 9px !important; background: #fff !important; }
+    body:has(.app-sidebar) .main-content .income-summary-item { min-height: 0 !important; padding: 0 12px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; }
+    body:has(.app-sidebar) .main-content .income-summary-item + .income-summary-item { border-left: 1px solid #eaecf0 !important; }
+    body:has(.app-sidebar) .main-content .income-summary-item > span { color: #667085 !important; font-size: 11px !important; font-weight: 500 !important; line-height: 1.4 !important; }
+    body:has(.app-sidebar) .main-content .income-summary-item > strong { color: #101828 !important; margin-top: 4px !important; font-size: 16px !important; line-height: 1.35 !important; font-variant-numeric: tabular-nums; }
+    body:has(.app-sidebar) .main-content .income-summary-item:nth-child(3) > strong { color: #047857 !important; }
+    body:has(.app-sidebar) .main-content .history-summary { min-height: 0 !important; padding: 10px 14px !important; gap: 8px !important; }
+
+    /* The known report ID gives these scoped overrides precedence over older theme rules. */
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) :is(.filter-card, .filter-section, .filter-container) { min-height: 0 !important; padding: 12px 14px !important; margin-bottom: 14px !important; border: 1px solid #e4e7ec !important; border-radius: 9px !important; box-shadow: 0 1px 2px rgba(16,24,40,.03) !important; background: #fff !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) :is(.filter-title, .history-filter-title) { min-height: 0 !important; margin: 0 0 10px !important; font-size: 12px !important; line-height: 1.4 !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) :is(.filter-title, .history-filter-title) > i { width: 23px !important; height: 23px !important; font-size: 10px !important; border-radius: 6px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form, .filter-form[method="GET" i]) {
+        display: flex !important; align-items: flex-end !important; flex-wrap: wrap !important; gap: 10px !important; width: 100% !important; min-width: 0 !important; min-height: 0 !important; padding: 12px 14px !important; margin: 0 0 14px !important; border-radius: 9px !important; border: 1px solid #e4e7ec !important; background: #fff !important; box-shadow: none !important;
+    }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) :is(.filter-card, .filter-section, .filter-container) form:is(.pi-filter-form, .filter-form[method="GET" i]),
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .overview-filter-panel form.overview-filter-form { padding: 0 !important; margin: 0 !important; border: 0 !important; background: transparent !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form.filter-section.pi-filter-form { padding: 12px 14px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) :is(.overview-filter-panel, .history-filter-form) { padding: 12px 14px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.pi-filter-grid, .pi-filter-primary-grid, .filter-grid, .filter-row, .history-filter-grid, .overview-filter-grid) { display: flex !important; align-items: flex-end !important; flex-wrap: wrap !important; flex: 1 1 560px !important; gap: 10px !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.form-group, .filter-group, .pi-filter-field, .billing-field, .history-field, .overview-field) { flex: 1 1 160px !important; min-width: 0 !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.form-group, .filter-group, .pi-filter-field, .billing-field, .history-field, .overview-field):has(input[type="search"], input[name="search"]) { flex-grow: 1.5 !important; flex-basis: 200px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) label { display: block !important; margin: 0 0 5px !important; font-size: 11px !important; line-height: 1.3 !important; font-weight: 600 !important; color: #475467 !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select) { box-sizing: border-box !important; width: 100% !important; min-width: 0 !important; max-width: 100% !important; height: 36px !important; min-height: 36px !important; margin: 0 !important; padding: 0 10px !important; font-size: 12px !important; line-height: 1.35 !important; border: 1px solid #d0d5dd !important; border-radius: 7px !important; background-color: #fff !important; box-shadow: none !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) select { padding-right: 30px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .school-directory-page form.pi-filter-form .school-search-control input.form-control[name="search"] { padding-left: 32px !important; padding-right: 34px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.pi-filter-actions, .filter-actions, .filter-buttons, .overview-filter-buttons, .report-filter-actions) { display: flex !important; align-items: center !important; justify-content: flex-end !important; flex: 0 0 auto !important; gap: 7px !important; margin: 0 !important; padding: 0 !important; width: auto !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.pi-filter-control, .filter-btn, .billing-button, .history-reset-button, .overview-action, .reset-btn, .pi-advanced-filter-toggle, .btn-primary, .btn-secondary) { display: inline-flex !important; align-items: center !important; justify-content: center !important; flex: 0 0 auto !important; gap: 6px !important; height: 36px !important; min-height: 36px !important; width: auto !important; margin: 0 !important; padding: 0 11px !important; font-size: 11px !important; line-height: 1 !important; border-radius: 7px !important; box-shadow: none !important; white-space: nowrap !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.reset-btn, .history-reset-button, [data-filter-reset]) { color: #475467 !important; background: #fff !important; border: 1px solid #d0d5dd !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-filter-category-label { display: contents !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-filter-category-title { display: none !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-filter-category-label > .pi-advanced-filter-toggle { order: 1; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form.pi-filter-grouped > .pi-filter-actions { order: 2; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-advanced-filter-panel { order: 3; flex: 1 0 100% !important; width: 100% !important; margin-top: 0 !important; padding: 10px !important; background: #f9fafb !important; border: 1px solid #eaecf0 !important; border-radius: 7px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-advanced-filter-panel-header { margin-bottom: 8px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-advanced-filter-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; gap: 10px !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-advanced-filter-panel[hidden],
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form.pi-filter-grouped :is(.filter-grid, .filter-row):empty { display: none !important; }
+}
+@media screen and (max-width: 850px) {
+    body:has(.app-sidebar) .main-content :is(.overview-stats, .billing-stats, .payment-stats, .stats-grid, .income-summary) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    body:has(.app-sidebar) .main-content .income-summary-item:nth-child(3) { border-left: 0 !important; }
+}
+@media screen and (max-width: 600px) {
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.form-group, .filter-group, .pi-filter-field, .billing-field, .history-field, .overview-field) { flex-basis: calc(50% - 5px) !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.form-group, .filter-group, .pi-filter-field, .billing-field, .history-field, .overview-field):has(input[name="search"]) { flex-basis: 100% !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.pi-filter-actions, .filter-actions, .filter-buttons, .overview-filter-buttons, .report-filter-actions) { flex: 1 0 100% !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form.pi-filter-grouped:has(> .pi-filter-category-label > .pi-advanced-filter-toggle) > .pi-filter-actions { flex: 0 1 auto !important; margin-left: auto !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-advanced-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media screen and (max-width: 360px) {
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) form:is(.pi-filter-form, .billing-scope-form, .history-filter-form, .overview-filter-form) :is(.form-group, .filter-group, .pi-filter-field, .billing-field, .history-field, .overview-field) { flex-basis: 100% !important; }
+    body:has(.app-sidebar) :is(.main-content, #pi-report-page) .pi-advanced-filter-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}

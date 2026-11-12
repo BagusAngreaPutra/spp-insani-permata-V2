@@ -86,6 +86,13 @@
                     </a>
                 @endif
 
+                @if($adminUser?->hasPermission('pengeluaran.manage'))
+                    <a href="{{ route('pengeluaran.index') }}" class="app-nav-link {{ request()->routeIs('pengeluaran.*') ? 'is-active' : '' }}" data-nav-item><i class="fas fa-arrow-trend-down"></i><span>Catatan Kas Keluar</span></a>
+                @endif
+                @if($adminUser?->hasPermission('keuangan_kas.view'))
+                    <a href="{{ route('keuangan.kas.index') }}" class="app-nav-link {{ request()->routeIs('keuangan.kas.*') ? 'is-active' : '' }}" data-nav-item><i class="fas fa-wallet"></i><span>Ringkasan Kas</span></a>
+                @endif
+
                 @if($canKenaikan)
                     <details class="app-nav-group" {{ request()->routeIs('kenaikan.*', 'kelulusan.*') ? 'open' : '' }} data-nav-item>
                         <summary><i class="fas fa-graduation-cap"></i><span>Akademik</span><i class="fas fa-chevron-down"></i></summary>
@@ -128,6 +135,7 @@
                         <div>
                             @if($adminUser->hasPermission('tagihan.manage'))
                                 <a href="{{ route('pengaturan.diskon-spp.edit') }}" class="{{ request()->routeIs('pengaturan.diskon-spp.*') ? 'is-active' : '' }}"><i class="fas fa-percent"></i><span>Diskon SPP</span></a>
+                                <a href="{{ route('pengaturan.kwitansi.edit') }}" class="{{ request()->routeIs('pengaturan.kwitansi.*') ? 'is-active' : '' }}"><i class="fas fa-receipt"></i><span>Pengaturan kwitansi</span></a>
                             @endif
                             @if($adminUser->hasPermission('log.view'))
                                 <a href="{{ route('log_aktivitas.index') }}" class="{{ request()->routeIs('log_aktivitas.*') ? 'is-active' : '' }}"><i class="fas fa-clock-rotate-left"></i><span>Aktivitas</span></a>

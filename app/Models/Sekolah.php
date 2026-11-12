@@ -41,20 +41,6 @@ class Sekolah extends Model
     // ✅ Method untuk generate nomor kwitansi berikutnya
     public function getNextNomorKwitansi()
     {
-        $tahun = date('Y');
-        $kodeSekolah = $this->kode_sekolah;
-
-        // Cari nomor terakhir untuk sekolah dan tahun ini
-        $lastNumber = \DB::table('pembayaran')
-            ->join('siswa', 'pembayaran.siswa_id', '=', 'siswa.id')
-            ->where('siswa.id_sekolah', $this->id)
-            ->where('pembayaran.nomor_kwitansi', 'LIKE', "%/{$kodeSekolah}/{$tahun}")
-            ->max(\DB::raw('CAST(SUBSTRING_INDEX(pembayaran.nomor_kwitansi, "/", 1) AS UNSIGNED)'));
-
-        // Nomor berikutnya
-        $nextNumber = $lastNumber ? $lastNumber + 1 : 1;
-
-        // Format nomor kwitansi: 000001/SDIT/2025
-        return sprintf('%06d/%s/%s', $nextNumber, $kodeSekolah, $tahun);
+        return app(\App\Services\ReceiptNumberGenerator::class)->school($this);
     }
 }
