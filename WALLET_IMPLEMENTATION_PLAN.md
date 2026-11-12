@@ -115,6 +115,8 @@ Migration ini belum mengubah tabel `tagihan`, `pembayaran`, atau `koperasi_penju
 - Audit saldo membandingkan cache saldo wallet dengan entry ledger dan gagal jika ada saldo negatif atau selisih.
 - Uji yang disiapkan untuk sandbox: top up sukses/gagal/expired, webhook ganda, nominal berbeda, saldo kurang, pembayaran ganda, refund, dan transaksi bersamaan.
 - Production gateway belum diaktifkan; pilot harus dimulai dari sandbox dan satu kelompok siswa.
+- Fake gateway dibatasi untuk local/testing dan ditolak otomatis pada environment production.
+- Verifikasi ulang: rate limit endpoint terpasang pada route, webhook tidak dapat memakai fake signature di production, dan command rekonsiliasi terdaftar di Artisan.
 
 ## Aturan eksekusi berikutnya
 

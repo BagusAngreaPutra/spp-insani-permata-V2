@@ -28,6 +28,6 @@ class FakePaymentGateway implements PaymentGateway
 
     public function verifyWebhook(array $payload, array $headers = []): bool
     {
-        return app()->environment('testing') || (bool) ($payload['fake_signature_valid'] ?? false);
+        return app()->environment(['local', 'testing']) && (app()->environment('testing') || (bool) ($payload['fake_signature_valid'] ?? false));
     }
 }

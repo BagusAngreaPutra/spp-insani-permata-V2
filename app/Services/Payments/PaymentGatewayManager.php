@@ -11,6 +11,10 @@ class PaymentGatewayManager
     {
         $driver = strtolower((string) ($name ?: config('services.payment_gateway.driver', 'fake')));
 
+        if ($driver === 'fake' && app()->environment('production')) {
+            throw new InvalidArgumentException('Fake payment gateway tidak boleh digunakan di production.');
+        }
+
         return match ($driver) {
             'midtrans' => app(MidtransGateway::class),
             'fake', 'testing' => app(FakePaymentGateway::class),
