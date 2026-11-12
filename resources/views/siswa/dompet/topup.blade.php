@@ -6,8 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Status Top Up · Permata Insani</title>
     <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
+    <link href="{{ asset('css/wallet-pages.css') }}?v=20261112-1" rel="stylesheet">
 </head>
-<body>
+<body class="wallet-page">
     @include('layouts.sidebar-siswa')
     <div class="main-content">
         @include('layouts.header-siswa')
@@ -16,9 +17,9 @@
                 <h1 class="dashboard-title">Status top up</h1>
                 <p class="dashboard-subtitle">{{ $topup->reference }}</p>
             </div>
-            <section class="dashboard-card"><div class="card-content">
+            <section class="wallet-panel"><div class="wallet-panel-head"><h2 class="wallet-panel-title">Detail top up</h2></div><div class="wallet-panel-body">
                 <p><strong>Nominal:</strong> Rp{{ number_format((float) $topup->amount, 0, ',', '.') }}</p>
-                <p><strong>Status:</strong> {{ ucfirst($topup->status) }}</p>
+                <p><strong>Status:</strong> <span class="wallet-status wallet-status-{{ $topup->status }}">{{ $topup->status }}</span></p>
                 @if($topup->status === 'pending')
                     <p>Menunggu pembayaran dan verifikasi gateway. Halaman ini aman untuk ditutup.</p>
                 @elseif($topup->status === 'paid')
