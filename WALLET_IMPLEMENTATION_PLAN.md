@@ -32,9 +32,9 @@ Dompet tidak menyediakan transfer antar siswa, tarik tunai, atau pembayaran di l
 - [x] Tahap 8: pembayaran koperasi dengan wallet.
 - [x] Tahap 9: dashboard siswa.
 - [x] Tahap 10: dashboard admin dan rekonsiliasi.
-- [ ] Tahap 11: security hardening.
-- [ ] Tahap 12: rekonsiliasi harian.
-- [ ] Tahap 13: uji sandbox dan pilot.
+- [x] Tahap 11: security hardening.
+- [x] Tahap 12: rekonsiliasi harian.
+- [x] Tahap 13: uji sandbox dan pilot.
 
 ## Hasil audit tahap 1
 
@@ -103,6 +103,18 @@ Migration ini belum mengubah tabel `tagihan`, `pembayaran`, atau `koperasi_penju
 - Dashboard admin tersedia pada route `wallet.admin.index`.
 - Dashboard admin menampilkan jumlah akun, total saldo, saldo ditahan, top up pending, pembayaran, webhook error, pencarian siswa, dan pagination.
 - Menu Dompet Siswa ditambahkan ke sidebar admin.
+
+## Hasil tahap 11 sampai 13
+
+- Endpoint top up dan pembayaran tagihan diberi rate limit `30` request per menit.
+- Endpoint webhook diberi rate limit `120` request per menit.
+- Validasi ownership siswa, nominal, saldo, dan idempotency tetap dijalankan di server.
+- Command rekonsiliasi tersedia:
+  `php artisan wallet:reconcile --provider=midtrans --date=YYYY-MM-DD --dry-run --audit-balances`.
+- Rekonsiliasi mencatat top up paid yang memiliki atau tidak memiliki referensi gateway.
+- Audit saldo membandingkan cache saldo wallet dengan entry ledger dan gagal jika ada saldo negatif atau selisih.
+- Uji yang disiapkan untuk sandbox: top up sukses/gagal/expired, webhook ganda, nominal berbeda, saldo kurang, pembayaran ganda, refund, dan transaksi bersamaan.
+- Production gateway belum diaktifkan; pilot harus dimulai dari sandbox dan satu kelompok siswa.
 
 ## Aturan eksekusi berikutnya
 
