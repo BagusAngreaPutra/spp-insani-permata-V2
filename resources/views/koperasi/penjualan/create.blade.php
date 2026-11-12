@@ -235,6 +235,7 @@
                             <option value="">Pilih metode</option>
                             <option value="tunai" @selected(old('metode_bayar', $penjualan->metode_bayar ?? '') === 'tunai')>Tunai (TN)</option>
                             <option value="transfer" @selected(old('metode_bayar', $penjualan->metode_bayar ?? '') === 'transfer')>Transfer (TF)</option>
+                            <option value="dompet" @selected(old('metode_bayar', $penjualan->metode_bayar ?? '') === 'dompet')>Dompet siswa (DW)</option>
                         </select>
                     </div>
                     @if($editing)

@@ -90,7 +90,7 @@ class KoperasiPenjualanController extends Controller
     {
         $validated = $request->validate([
             'siswa_id' => 'required|exists:siswa,id', 'tanggal' => 'required|date',
-            'catatan' => 'nullable|string|max:1000', 'metode_bayar' => 'required|in:tunai,transfer',
+            'catatan' => 'nullable|string|max:1000', 'metode_bayar' => 'required|in:tunai,transfer,dompet',
             'alasan_koreksi' => $id ? 'required|string|min:5|max:1000' : 'nullable|string|max:1000',
             'items' => 'required|array', 'items.*.koperasi_id' => 'nullable|exists:koperasi,id',
             'items.*.jumlah' => 'nullable|integer|min:1',
@@ -101,6 +101,11 @@ class KoperasiPenjualanController extends Controller
 
         $sale = DB::transaction(function () use ($id, $validated, $items, $request) {
             $sale = $id ? KoperasiPenjualan::lockForUpdate()->findOrFail($id) : new KoperasiPenjualan;
+            if ($id && $sale->metode_bayar === 'dompet') {
+                throw ValidationException::withMessages([
+                    'metode_bayar' => 'Transaksi yang sudah dibayar melalui dompet belum dapat dikoreksi. Batalkan transaksi lalu buat transaksi baru.',
+                ]);
+            }
             $old = $id ? $sale->details()->get() : collect();
             $before = $id ? ['transaksi' => $sale->toArray(), 'items' => $old->toArray()] : null;
             $goods = Koperasi::whereIn('id', $items->pluck('koperasi_id')->merge($old->pluck('koperasi_id'))->unique())->orderBy('id')->lockForUpdate()->get()->keyBy('id');
@@ -126,6 +131,11 @@ class KoperasiPenjualanController extends Controller
             $sale->save();
             if ($id) { $sale->details()->delete(); }
             $sale->details()->createMany($prepared->all());
+            if ($sale->metode_bayar === 'dompet') {
+                $walletPayment = app(\App\Services\WalletCooperativePaymentService::class)
+                    ->pay($sale, 'cooperative-sale:'.$sale->getKey());
+                $sale->forceFill(['wallet_payment_id' => $walletPayment->getKey()])->save();
+            }
             LogAktivitas::create(['aktor_type' => 'admin', 'aktor_id' => auth()->id(), 'aktivitas' => ($id ? 'Koreksi' : 'Mencatat').' penjualan koperasi '.$sale->kode_transaksi.'. Alasan: '.($validated['alasan_koreksi'] ?? '-').'. Sebelum: '.json_encode($before).'. Sesudah: '.json_encode(['transaksi' => $sale->toArray(), 'items' => $prepared->all()]), 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent()]);
             return $sale;
         });
@@ -212,6 +222,21 @@ class KoperasiPenjualanController extends Controller
                 Koperasi::whereKey($detail->koperasi_id)->increment('stok', $detail->jumlah);
             }
 
+            if ($penjualan->metode_bayar === 'dompet' && $penjualan->wallet_payment_id) {
+                $walletPayment = $penjualan->walletPayment()->with('journal')->first();
+                if ($walletPayment?->journal && !$walletPayment->reversed_at) {
+                    app(\App\Services\WalletLedgerService::class)->refund(
+                        $walletPayment->journal,
+                        'cooperative-refund:'.$penjualan->id,
+                        ['sale_id' => $penjualan->id, 'sale_code' => $kodeTransaksi],
+                    );
+                    $walletPayment->forceFill([
+                        'status' => 'refunded',
+                        'reversed_at' => now(),
+                    ])->save();
+                }
+            }
+
             $penjualan->forceFill(['cancelled_by' => auth()->id(), 'cancellation_reason' => $validated['alasan_pembatalan']])->save();
             $penjualan->delete();
 
@@ -243,7 +268,7 @@ class KoperasiPenjualanController extends Controller
             'number' => $penjualan->kode_transaksi,
             'payment_date' => $penjualan->tanggal,
             'receipt_date' => $penjualan->tanggal,
-            'method' => match ($penjualan->metode_bayar) { 'tunai' => 'Tunai (TN)', 'transfer' => 'Transfer (TF)', default => 'Belum dicatat' },
+            'method' => match ($penjualan->metode_bayar) { 'tunai' => 'Tunai (TN)', 'transfer' => 'Transfer (TF)', 'dompet' => 'Dompet (DW)', default => 'Belum dicatat' },
             'officer' => $penjualan->posted_by_name,
             'note' => $penjualan->catatan,
             'items' => $penjualan->details->map(fn ($detail) => [

@@ -33,6 +33,7 @@ use App\Http\Controllers\KelulusanKelasController;
 use App\Http\Controllers\SppDiscountSettingController;
 use App\Http\Controllers\PaymentGatewayWebhookController;
 use App\Http\Controllers\Siswa\WalletTopupController;
+use App\Http\Controllers\Siswa\WalletBillPaymentController;
 
 
 
@@ -64,6 +65,7 @@ Route::prefix('siswa')->middleware('auth:siswa')->group(function () {
     Route::get('/dompet', [WalletTopupController::class, 'index'])->name('siswa.dompet.index');
     Route::post('/dompet/topup', [WalletTopupController::class, 'store'])->name('siswa.dompet.topup.store');
     Route::get('/dompet/topup/{topup}', [WalletTopupController::class, 'show'])->name('siswa.dompet.topup.show');
+    Route::post('/tagihan/bayar-dompet', [WalletBillPaymentController::class, 'store'])->name('siswa.tagihan.wallet-pay');
     Route::get('/tagihan', [TagihanSiswaController::class, 'index'])->name('siswa.tagihan.index');
     Route::get('/riwayat-pembayaran', [RiwayatPembayaranController::class, 'index'])->name('siswa.riwayat.index');
     Route::get('/profil', [ProfileSiswaController::class, 'index'])->name('siswa.profil.index');

@@ -20,6 +20,7 @@ class KoperasiPenjualan extends Model
         'total',
         'catatan',
         'metode_bayar',
+        'wallet_payment_id',
     ];
 
     protected $casts = [
@@ -48,5 +49,10 @@ class KoperasiPenjualan extends Model
     public function details()
     {
         return $this->hasMany(KoperasiPenjualanDetail::class, 'koperasi_penjualan_id');
+    }
+
+    public function walletPayment()
+    {
+        return $this->belongsTo(WalletPayment::class, 'wallet_payment_id');
     }
 }

@@ -185,11 +185,29 @@
             @endif
         </div>
 
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if($errors->any())
+            <div class="alert alert-danger">{{ $errors->first() }}</div>
+        @endif
+
+        <form method="POST" action="{{ route('siswa.tagihan.wallet-pay') }}" id="walletBillPaymentForm">
+            @csrf
+            <input type="hidden" name="idempotency_key" value="bill-request-{{ Str::uuid() }}">
+            <div style="display:flex; justify-content:flex-end; margin-bottom:1rem; gap:.75rem; align-items:center; flex-wrap:wrap;">
+                <span id="walletPaymentHint" style="color:#64748b; font-size:.9rem;">Pilih tagihan yang akan dibayar dengan dompet.</span>
+                <button type="submit" class="btn btn-success" id="walletPayButton" disabled>
+                    <i class="fas fa-wallet"></i> Bayar dengan dompet
+                </button>
+            </div>
+
         <div class="table-container">
             <table class="modern-table">
                 <thead>
                     <tr>
                         <th>#</th>
+                        <th>Pilih</th>
                         <th>Jenis Tagihan</th>
                         <th>Tipe</th>
                         <th>Periode</th>
@@ -209,6 +227,13 @@
                         @endphp
                         <tr>
                             <td>{{ $index + 1 }}</td>
+                            <td>
+                                @if($tagihan->is_active && $sisaAktual > 0)
+                                    <input type="checkbox" name="tagihan_ids[]" value="{{ $tagihan->id }}" class="wallet-bill-checkbox" data-amount="{{ $sisaAktual }}" aria-label="Pilih {{ $tagihan->nama_tagihan_dinamis }}">
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td>{{ $tagihan->nama_tagihan_dinamis }}</td>
                             <td>{{ ucfirst($tagihan->tipe) }}</td>
                             <td>{{ $tagihan->periode ?? '-' }}</td>
@@ -235,7 +260,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-gray-500">
+                            <td colspan="9" class="text-center py-4 text-gray-500">
                                 Tidak ada tagihan.
                             </td>
                         </tr>
@@ -243,6 +268,31 @@
                 </tbody>
             </table>
         </div>
+        </form>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    (() => {
+        const checks = [...document.querySelectorAll('.wallet-bill-checkbox')];
+        const button = document.getElementById('walletPayButton');
+        const hint = document.getElementById('walletPaymentHint');
+        const refresh = () => {
+            const selected = checks.filter((check) => check.checked);
+            const total = selected.reduce((sum, check) => sum + Number(check.dataset.amount || 0), 0);
+            button.disabled = selected.length === 0;
+            hint.textContent = selected.length
+                ? `${selected.length} tagihan dipilih · Rp${new Intl.NumberFormat('id-ID').format(total)}`
+                : 'Pilih tagihan yang akan dibayar dengan dompet.';
+        };
+        checks.forEach((check) => check.addEventListener('change', refresh));
+        document.getElementById('walletBillPaymentForm')?.addEventListener('submit', (event) => {
+            if (!checks.some((check) => check.checked) || !confirm('Bayar tagihan terpilih menggunakan saldo dompet?')) {
+                event.preventDefault();
+            }
+        });
+    })();
+</script>
+@endpush

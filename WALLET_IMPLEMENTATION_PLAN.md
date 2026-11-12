@@ -28,8 +28,8 @@ Dompet tidak menyediakan transfer antar siswa, tarik tunai, atau pembayaran di l
 - [x] Tahap 4: `WalletLedgerService`.
 - [x] Tahap 5: adapter payment gateway sandbox.
 - [x] Tahap 6: top up siswa.
-- [ ] Tahap 7: pembayaran tagihan dengan wallet.
-- [ ] Tahap 8: pembayaran koperasi dengan wallet.
+- [x] Tahap 7: pembayaran tagihan dengan wallet.
+- [x] Tahap 8: pembayaran koperasi dengan wallet.
 - [ ] Tahap 9: dashboard siswa.
 - [ ] Tahap 10: dashboard admin dan rekonsiliasi.
 - [ ] Tahap 11: security hardening.
@@ -82,6 +82,19 @@ Migration ini belum mengubah tabel `tagihan`, `pembayaran`, atau `koperasi_penju
 - Webhook tersedia pada `POST /webhooks/payment-gateway/{provider}`.
 - Webhook memeriksa signature, nominal, status, event idempotency, dan hanya mengkredit saldo satu kali.
 - Top up sukses membuat jurnal kredit melalui `WalletLedgerService`.
+
+## Hasil tahap 7 dan 8
+
+- `WalletBillPaymentService` membayar satu atau beberapa tagihan milik siswa dalam satu database transaction.
+- Nominal dibaca ulang dari database dan hanya sisa tagihan yang dibayar.
+- Pembayaran wallet membuat record `pembayaran` dengan `metode_bayar = dompet`, `transaction_id` jurnal, dan record `wallet_payments`.
+- Pembayaran ganda, tagihan siswa lain, tagihan tidak aktif, dan saldo kurang ditolak.
+- Halaman siswa memiliki checkbox tagihan dan tombol bayar dengan dompet.
+- Koperasi menerima metode `dompet` dan menggunakan `WalletCooperativePaymentService`.
+- Stok, penjualan, dan debit wallet berada dalam database transaction yang sama.
+- Koreksi transaksi koperasi yang sudah dibayar dengan dompet ditolak untuk mencegah debit ganda.
+- Pembatalan penjualan koperasi yang dibayar dengan dompet membuat refund ledger.
+- Kolom `wallet_payment_id` ditambahkan ke `koperasi_penjualan` melalui migration `2026_11_12_000009_add_wallet_payment_to_koperasi_penjualan_table.php`.
 
 ## Aturan eksekusi berikutnya
 
