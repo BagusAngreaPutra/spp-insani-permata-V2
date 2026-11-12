@@ -15,7 +15,6 @@ use App\Http\Controllers\PembayaranController;
 use App\Http\Controllers\KenaikanKelasController;
 use App\Http\Controllers\Auth\AdminAuthController;
 use App\Http\Controllers\Siswa\AuthController as SiswaAuthController;
-use App\Http\Controllers\Siswa\DashboardController as SiswaDashboardController;
 use App\Http\Controllers\Siswa\Auth\LoginController as SiswaLoginController;
 use App\Http\Controllers\Siswa\TagihanSiswaController;
 use App\Http\Controllers\Siswa\RiwayatPembayaranController;
@@ -57,7 +56,7 @@ Route::prefix('siswa')->group(function () {
     Route::post('/logout', [SiswaAuthController::class, 'logout'])->name('siswa.logout');
 
 // ✅ Dashboard siswa (butuh middleware guard siswa)
-Route::get('/dashboard', [SiswaDashboardController::class, 'index'])
+Route::get('/dashboard', fn () => redirect()->route('siswa.dompet.index'))
         ->middleware('auth:siswa')
         ->name('siswa.dashboard');
 });

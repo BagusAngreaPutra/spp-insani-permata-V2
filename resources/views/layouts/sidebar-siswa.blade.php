@@ -13,9 +13,6 @@
 
     <p class="app-nav-label">Menu</p>
     <nav class="app-nav">
-        <a href="{{ route('siswa.dashboard') }}" class="app-nav-link {{ request()->routeIs('siswa.dashboard') ? 'is-active' : '' }}">
-            <i class="fas fa-chart-pie" aria-hidden="true"></i><span>Ringkasan</span>
-        </a>
         <a href="{{ route('siswa.tagihan.index') }}" class="app-nav-link {{ request()->routeIs('siswa.tagihan.*') ? 'is-active' : '' }}">
             <i class="fas fa-receipt"></i><span>Tagihan</span>
         </a>
