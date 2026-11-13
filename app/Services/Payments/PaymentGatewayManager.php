@@ -18,6 +18,7 @@ class PaymentGatewayManager
         return match ($driver) {
             'midtrans' => app(MidtransGateway::class),
             'xendit' => app(XenditGateway::class),
+            'doku' => app(DokuGateway::class),
             'fake', 'testing' => app(FakePaymentGateway::class),
             default => throw new InvalidArgumentException('Payment gateway tidak didukung: '.$driver),
         };

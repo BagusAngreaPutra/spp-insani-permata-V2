@@ -94,6 +94,9 @@ class PaymentGatewayWebhookController extends Controller
 
     private function eventId(string $provider, array $payload): string
     {
+        if ($provider === 'doku') {
+            return hash('sha256', implode('|', ['doku', data_get($payload, 'order.invoice_number', ''), data_get($payload, 'transaction.status', ''), data_get($payload, 'transaction.original_request_id', '')]));
+        }
         if (!empty($payload['event_id'] ?? null)) {
             return (string) $payload['event_id'];
         }
@@ -112,16 +115,21 @@ class PaymentGatewayWebhookController extends Controller
 
     private function eventType(string $provider, array $payload): string
     {
+        if ($provider === 'doku') return 'doku.'.strtolower((string) data_get($payload, 'transaction.status', 'payment'));
         return (string) ($payload['event'] ?? $payload['transaction_status'] ?? $provider.'.payment');
     }
 
     private function reference(string $provider, array $payload): string
     {
+        if ($provider === 'doku') return (string) data_get($payload, 'order.invoice_number', '');
         return (string) ($payload['order_id'] ?? $payload['reference_id'] ?? $payload['external_id'] ?? '');
     }
 
     private function status(string $provider, array $payload): string
     {
+        if ($provider === 'doku') {
+            return match (strtoupper((string) data_get($payload, 'transaction.status', 'PENDING'))) { 'SUCCESS' => 'paid', 'FAILED' => 'failed', 'EXPIRED' => 'expired', default => 'pending' };
+        }
         $raw = strtolower((string) ($payload['transaction_status'] ?? $payload['status'] ?? $payload['event'] ?? 'pending'));
         return match (true) {
             in_array($raw, ['settlement', 'capture', 'succeeded', 'success', 'payment.capture'], true) => 'paid',
@@ -133,11 +141,13 @@ class PaymentGatewayWebhookController extends Controller
 
     private function amount(string $provider, array $payload): mixed
     {
+        if ($provider === 'doku') return data_get($payload, 'order.amount');
         return $payload['gross_amount'] ?? $payload['amount'] ?? $payload['request_amount'] ?? null;
     }
 
     private function paymentId(string $provider, array $payload): ?string
     {
+        if ($provider === 'doku') return (string) (data_get($payload, 'transaction.original_request_id') ?: data_get($payload, 'card_payment.payment_id') ?: '');
         $id = $payload['transaction_id'] ?? $payload['payment_id'] ?? $payload['id'] ?? null;
         return $id === null ? null : (string) $id;
     }
