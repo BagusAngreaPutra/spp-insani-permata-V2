@@ -32,7 +32,18 @@ class DokuGateway implements PaymentGateway
 
     public function getStatus(string $reference): GatewayPayment
     {
-        throw new RuntimeException('Status DOKU diperbarui melalui webhook.');
+        $clientId = (string) config('services.doku.client_id');
+        $secret = (string) config('services.doku.secret_key');
+        if ($clientId === '' || $secret === '') throw new RuntimeException('DOKU_CLIENT_ID dan DOKU_SECRET_KEY belum dikonfigurasi.');
+        $path = '/orders/v1/status/'.urlencode($reference);
+        $requestId = (string) Str::uuid();
+        $timestamp = now('UTC')->format('Y-m-d\TH:i:s\Z');
+        $raw = "Client-Id:$clientId\nRequest-Id:$requestId\nRequest-Timestamp:$timestamp\nRequest-Target:$path";
+        $response = Http::withHeaders(['Client-Id' => $clientId, 'Request-Id' => $requestId, 'Request-Timestamp' => $timestamp, 'Signature' => 'HMACSHA256='.base64_encode(hash_hmac('sha256', $raw, $secret, true))])->acceptJson()->timeout(20)->get(rtrim((string) config('services.doku.base_url'), '/').$path);
+        if ($response->failed()) throw new RuntimeException('DOKU gagal mengambil status transaksi: '.$response->body());
+        $data = $response->json();
+        $status = strtoupper((string) data_get($data, 'transaction.status', data_get($data, 'response.transaction.status', 'PENDING')));
+        return new GatewayPayment('doku', (string) (data_get($data, 'order.invoice_number') ?: $reference), (string) (data_get($data, 'transaction.original_request_id') ?: ''), match ($status) { 'SUCCESS' => 'paid', 'FAILED' => 'failed', 'EXPIRED' => 'expired', default => 'pending' }, raw: $data);
     }
 
     public function verifyWebhook(array $payload, array $headers = []): bool
