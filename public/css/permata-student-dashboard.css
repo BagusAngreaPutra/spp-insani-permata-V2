@@ -1033,7 +1033,7 @@
         }
     }
 
-    @media (max-width: 760px) {
+    @media (max-width: 900px) {
         .app-sidebar {
             width: min(82vw, 280px) !important;
             transform: translateX(-102%) !important;

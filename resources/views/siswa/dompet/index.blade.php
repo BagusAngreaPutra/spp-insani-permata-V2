@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Keuangan Siswa - Permata Insani</title>
-    <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
-    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-9" rel="stylesheet">
+    <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20261114-1" rel="stylesheet">
+    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-10" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="wallet-page">
@@ -98,3 +98,4 @@
     </script>
 </body>
 </html>
+
