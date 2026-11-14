@@ -71,6 +71,18 @@ class WalletTopupController extends Controller
                 ])
         )->sortByDesc('date')->take(6)->values();
 
+        $recentActivities = $recentActivities->merge(
+            WalletTopup::where('wallet_account_id', $account->getKey())
+                ->latest('created_at')->limit(5)->get()
+                ->map(fn ($topup) => [
+                    'type' => 'topup',
+                    'title' => 'Isi saldo dompet',
+                    'amount' => $topup->amount,
+                    'date' => $topup->created_at,
+                    'method' => ucfirst((string) $topup->status),
+                ])
+        )->sortByDesc('date')->take(6)->values();
+
         return view('siswa.dompet.index', compact('account', 'topups', 'tagihanSaya', 'recentActivities', 'selectedTahunAjaran'));
     }
 
