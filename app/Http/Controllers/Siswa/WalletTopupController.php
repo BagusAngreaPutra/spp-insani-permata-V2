@@ -5,6 +5,11 @@ namespace App\Http\Controllers\Siswa;
 use App\Contracts\PaymentGateway;
 use App\Http\Controllers\Controller;
 use App\Models\WalletTopup;
+use App\Models\Tagihan;
+use App\Models\TahunAjaran;
+use App\Models\Pembayaran;
+use App\Models\KoperasiPenjualan;
+use App\Services\TagihanPeriodReconciler;
 use App\Services\WalletLedgerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +33,45 @@ class WalletTopupController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('siswa.dompet.index', compact('account', 'topups'));
+        $academicYearData = TahunAjaran::validPeriods();
+        $selectedTahunAjaran = $academicYearData->firstWhere('aktif', true)
+            ?? $academicYearData->firstWhere('id', $student->tahun_ajaran_id)
+            ?? $academicYearData->first();
+        $periodReconciler = app(TagihanPeriodReconciler::class);
+        $tagihanSaya = Tagihan::with('pembayaran')
+            ->where('siswa_id', $student->id)
+            ->when($selectedTahunAjaran, fn ($query) => $query->where('tahun_ajaran_id', $selectedTahunAjaran->id))
+            ->orderBy('tanggal_jatuh_tempo')
+            ->get()
+            ->filter(fn (Tagihan $tagihan) => $periodReconciler->belongsToConfiguredPeriod($tagihan))
+            ->values();
+
+        $recentActivities = Pembayaran::with('tagihan')
+            ->where('siswa_id', $student->id)
+            ->latest('tanggal_bayar')
+            ->limit(5)
+            ->get()
+            ->map(fn ($payment) => [
+                'type' => 'school',
+                'title' => $payment->tagihan?->nama_tagihan_dinamis ?? 'Pembayaran sekolah',
+                'amount' => $payment->jumlah_bayar,
+                'date' => $payment->tanggal_bayar,
+                'method' => $payment->metode_bayar ?: 'Pembayaran',
+            ]);
+
+        $recentActivities = $recentActivities->merge(
+            KoperasiPenjualan::where('siswa_id', $student->id)
+                ->latest('tanggal')->limit(5)->get()
+                ->map(fn ($sale) => [
+                    'type' => 'cooperative',
+                    'title' => 'Belanja koperasi',
+                    'amount' => $sale->total,
+                    'date' => $sale->tanggal,
+                    'method' => 'Koperasi',
+                ])
+        )->sortByDesc('date')->take(6)->values();
+
+        return view('siswa.dompet.index', compact('account', 'topups', 'tagihanSaya', 'recentActivities', 'selectedTahunAjaran'));
     }
 
     public function store(Request $request): RedirectResponse

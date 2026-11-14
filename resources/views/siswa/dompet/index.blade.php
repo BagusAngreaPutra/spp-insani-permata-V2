@@ -28,14 +28,25 @@
 
             <div class="wallet-quick-actions">
                 <a href="#topup-form" class="wallet-quick-action"><span class="quick-icon quick-icon-green"><i class="fas fa-arrow-down-to-bracket"></i></span><span><strong>Isi saldo</strong><small>Tambah saldo dompet</small></span><i class="fas fa-chevron-right"></i></a>
-                <a href="{{ route('siswa.tagihan.index') }}" class="wallet-quick-action"><span class="quick-icon quick-icon-blue"><i class="fas fa-receipt"></i></span><span><strong>Bayar tagihan</strong><small>SPP dan keperluan sekolah</small></span><i class="fas fa-chevron-right"></i></a>
-                <a href="{{ route('siswa.riwayat.index') }}" class="wallet-quick-action"><span class="quick-icon quick-icon-purple"><i class="fas fa-clock-rotate-left"></i></span><span><strong>Lihat aktivitas</strong><small>Riwayat transaksi dompet</small></span><i class="fas fa-chevron-right"></i></a>
+                <a href="#tagihan-section" class="wallet-quick-action"><span class="quick-icon quick-icon-blue"><i class="fas fa-receipt"></i></span><span><strong>Bayar tagihan</strong><small>SPP dan keperluan sekolah</small></span><i class="fas fa-chevron-right"></i></a>
+                <a href="#aktivitas-section" class="wallet-quick-action"><span class="quick-icon quick-icon-purple"><i class="fas fa-clock-rotate-left"></i></span><span><strong>Lihat aktivitas</strong><small>Semua transaksi terbaru</small></span><i class="fas fa-chevron-right"></i></a>
             </div>
 
             <div class="stats-grid">
                 <article class="stat-card"><div class="stat-icon"><i class="fas fa-lock"></i></div><div><div class="stat-label">Saldo ditahan</div><div class="stat-value">Rp{{ number_format((float) $account->held_balance, 0, ',', '.') }}</div><div class="stat-caption">Belum dapat digunakan</div></div></article>
                 <article class="stat-card"><div class="stat-icon stat-icon-soft"><i class="fas fa-circle-check"></i></div><div><div class="stat-label">Status dompet</div><div class="stat-value stat-value-small">Aktif</div><div class="stat-caption">Siap untuk pembayaran</div></div></article>
             </div>
+
+            <section class="wallet-panel wallet-bills-panel" id="tagihan-section"><div class="wallet-panel-head"><div><h2 class="wallet-panel-title">Tagihan yang perlu dibayar</h2><p class="wallet-panel-subtitle">Pilih tagihan lalu bayar langsung dari saldo dompet.</p></div><div class="wallet-panel-head-actions"><span class="wallet-limit"><i class="fas fa-calendar"></i> {{ $selectedTahunAjaran?->label ?? 'Periode aktif' }}</span><a class="wallet-panel-link" href="{{ route('siswa.tagihan.index') }}">Kelola tagihan <i class="fas fa-arrow-right"></i></a></div></div><div class="table-responsive"><table class="wallet-table"><thead><tr><th>Tagihan</th><th>Jatuh tempo</th><th>Sisa</th><th>Status</th></tr></thead><tbody>
+                @forelse($tagihanSaya->take(5) as $tagihan)
+                    @php $terbayar = (float) $tagihan->pembayaran->sum('jumlah_bayar') + (float) $tagihan->pembayaran->sum('diskon'); $sisa = max(0, (float) $tagihan->nominal - $terbayar); @endphp
+                    <tr><td><strong>{{ $tagihan->nama_tagihan_dinamis }}</strong><small class="wallet-row-meta">{{ ucfirst($tagihan->tipe) }}{{ $tagihan->periode ? ' · '.$tagihan->periode : '' }}</small></td><td>{{ $tagihan->tanggal_jatuh_tempo?->format('d M Y') ?? '-' }}</td><td><strong>Rp{{ number_format($sisa, 0, ',', '.') }}</strong></td><td>@if($sisa <= 0)<span class="wallet-status wallet-status-paid">Lunas</span>@elseif(!$tagihan->is_active)<span class="wallet-status wallet-status-expired">Tidak aktif</span>@else<span class="wallet-status wallet-status-pending">Belum lunas</span>@endif</td></tr>
+                @empty <tr><td colspan="4" class="text-center">Tidak ada tagihan pada periode aktif.</td></tr>@endforelse
+            </tbody></table></div></section>
+
+            <section class="wallet-panel" id="aktivitas-section"><div class="wallet-panel-head"><div><h2 class="wallet-panel-title">Aktivitas terbaru</h2><p class="wallet-panel-subtitle">Riwayat pembayaran sekolah dan koperasi.</p></div><span class="wallet-limit"><i class="fas fa-clock-rotate-left"></i> Terbaru</span></div><div class="table-responsive"><table class="wallet-table"><thead><tr><th>Aktivitas</th><th>Metode</th><th>Nominal</th><th>Waktu</th></tr></thead><tbody>
+                @forelse($recentActivities as $activity)<tr><td><strong>{{ $activity['title'] }}</strong><small class="wallet-row-meta">{{ $activity['type'] === 'cooperative' ? 'Transaksi koperasi' : 'Pembayaran sekolah' }}</small></td><td>{{ ucfirst($activity['method']) }}</td><td><strong>Rp{{ number_format((float) $activity['amount'], 0, ',', '.') }}</strong></td><td>{{ $activity['date'] ? \Illuminate\Support\Carbon::parse($activity['date'])->format('d M Y, H:i') : '-' }}</td></tr>@empty<tr><td colspan="4" class="text-center">Belum ada aktivitas pembayaran.</td></tr>@endforelse
+            </tbody></table></div></section>
 
             <section class="wallet-panel" id="topup-form"><div class="wallet-panel-head"><div><h2 class="wallet-panel-title">Isi saldo</h2><p class="wallet-panel-subtitle">Pilih nominal untuk melanjutkan pembayaran.</p></div><span class="wallet-limit"><i class="fas fa-shield-halved"></i> Aman</span></div><div class="wallet-panel-body">
                 <form method="POST" action="{{ route('siswa.dompet.topup.store') }}" class="wallet-form">
@@ -45,7 +56,7 @@
                 </form><div class="wallet-muted" style="margin-top:10px">Minimum Rp10.000 dan maksimum Rp5.000.000 per transaksi. Saldo masuk setelah pembayaran terverifikasi.</div>
             </div></section>
 
-            <section class="wallet-panel"><div class="wallet-panel-head"><div><h2 class="wallet-panel-title">Riwayat top up</h2><p class="wallet-panel-subtitle">Pantau semua penambahan saldo dompet.</p></div><a class="wallet-panel-link" href="{{ route('siswa.riwayat.index') }}">Semua aktivitas <i class="fas fa-arrow-up-right-from-square"></i></a></div><div class="table-responsive"><table class="wallet-table"><thead><tr><th>Referensi</th><th>Nominal</th><th>Status</th><th>Dibuat</th></tr></thead><tbody>
+            <section class="wallet-panel"><div class="wallet-panel-head"><div><h2 class="wallet-panel-title">Riwayat isi saldo</h2><p class="wallet-panel-subtitle">Pantau semua penambahan saldo dompet.</p></div></div><div class="table-responsive"><table class="wallet-table"><thead><tr><th>Referensi</th><th>Nominal</th><th>Status</th><th>Dibuat</th></tr></thead><tbody>
                 @forelse($topups as $topup)<tr><td><a href="{{ route('siswa.dompet.topup.show', $topup) }}">{{ $topup->reference }}</a><small class="wallet-row-meta">Top up dompet</small></td><td><strong>Rp{{ number_format((float) $topup->amount, 0, ',', '.') }}</strong></td><td><span class="wallet-status wallet-status-{{ $topup->status }}">{{ $topup->status }}</span></td><td>{{ optional($topup->created_at)->format('d/m/Y H:i') }}</td></tr>
                 @empty<tr><td colspan="4" class="text-center">Belum ada top up.</td></tr>@endforelse
             </tbody></table></div>{{ $topups->links() }}</section>
