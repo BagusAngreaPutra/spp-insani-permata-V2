@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Keuangan Siswa - Permata Insani</title>
     <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
-    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-7" rel="stylesheet">
+    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-8" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="wallet-page">
@@ -55,21 +55,25 @@
             <div class="wallet-content-grid">
                 <section class="wallet-panel wallet-bills-panel" id="tagihan-section" aria-labelledby="tagihan-title">
                     <div class="wallet-panel-head"><div><span class="wallet-section-kicker">KEWAJIBAN</span><h2 class="wallet-panel-title" id="tagihan-title">Tagihan siswa</h2><p class="wallet-panel-subtitle">Tagihan dari periode {{ $selectedTahunAjaran?->label ?? 'aktif' }}.</p></div><a class="wallet-panel-link" href="{{ route('siswa.tagihan.index') }}">Kelola <i class="fas fa-arrow-right"></i></a></div>
+                    <form method="POST" action="{{ route('siswa.tagihan.wallet-pay') }}" id="walletBillPaymentForm">
+                    @csrf
+                    <input type="hidden" name="idempotency_key" value="bill-request-{{ \Illuminate\Support\Str::uuid() }}">
+                    <div class="wallet-bill-toolbar"><span id="walletPaymentHint">Pilih tagihan yang ingin dibayar.</span><button type="submit" class="btn btn-primary" id="walletPayButton" disabled><i class="fas fa-wallet"></i> Bayar terpilih</button></div>
                     <div class="wallet-list">
                         @forelse($tagihanSaya->take(5) as $tagihan)
                             @php $terbayar = (float) $tagihan->pembayaran->sum('jumlah_bayar') + (float) $tagihan->pembayaran->sum('diskon'); $sisa = max(0, (float) $tagihan->nominal - $terbayar); @endphp
-                            <div class="bill-item"><span class="bill-icon"><i class="fas fa-file-invoice"></i></span><div class="bill-copy"><strong>{{ $tagihan->nama_tagihan_dinamis }}</strong><small>{{ ucfirst($tagihan->tipe) }}{{ $tagihan->periode ? ' · '.$tagihan->periode : '' }} · Jatuh tempo {{ $tagihan->tanggal_jatuh_tempo?->format('d M Y') ?? '-' }}</small></div><div class="bill-amount"><strong>Rp{{ number_format($sisa, 0, ',', '.') }}</strong>@if($sisa <= 0)<span class="wallet-status wallet-status-paid">Lunas</span>@elseif(!$tagihan->is_active)<span class="wallet-status wallet-status-expired">Tidak aktif</span>@else<span class="wallet-status wallet-status-pending">Belum lunas</span>@endif</div></div>
+                            <div class="bill-item"><span class="bill-icon"><i class="fas fa-file-invoice"></i></span><div class="bill-copy"><strong>{{ $tagihan->nama_tagihan_dinamis }}</strong><small>{{ ucfirst($tagihan->tipe) }}{{ $tagihan->periode ? ' · '.$tagihan->periode : '' }} · Jatuh tempo {{ $tagihan->tanggal_jatuh_tempo?->format('d M Y') ?? '-' }}</small></div><div class="bill-amount"><strong>Rp{{ number_format($sisa, 0, ',', '.') }}</strong>@if($sisa <= 0)<span class="wallet-status wallet-status-paid">Lunas</span>@elseif(!$tagihan->is_active)<span class="wallet-status wallet-status-expired">Tidak aktif</span>@else<label class="bill-select"><input type="checkbox" name="tagihan_ids[]" value="{{ $tagihan->id }}" data-amount="{{ $sisa }}" class="wallet-bill-checkbox"><span class="wallet-status wallet-status-pending">Belum lunas</span></label>@endif</div></div>
                         @empty <div class="wallet-empty"><i class="fas fa-check-circle"></i><strong>Tidak ada tagihan</strong><span>Semua kewajiban pada periode aktif sudah selesai.</span></div>@endforelse
-                    </div>
+                    </div></form>
                     <div class="wallet-panel-foot"><a class="wallet-panel-link" href="{{ route('siswa.tagihan.index') }}">Lihat semua tagihan <i class="fas fa-arrow-right"></i></a></div>
                 </section>
 
                 <section class="wallet-panel wallet-activity-panel" id="aktivitas-section" aria-labelledby="aktivitas-title">
-                    <div class="wallet-panel-head"><div><span class="wallet-section-kicker">AKTIVITAS</span><h2 class="wallet-panel-title" id="aktivitas-title">Riwayat terbaru</h2><p class="wallet-panel-subtitle">Pembayaran dan isi saldo terakhir.</p></div><a class="wallet-panel-link" href="{{ route('siswa.riwayat.index') }}">Semua <i class="fas fa-arrow-right"></i></a></div>
+                    <div class="wallet-panel-head"><div><span class="wallet-section-kicker">AKTIVITAS</span><h2 class="wallet-panel-title" id="aktivitas-title">Riwayat terbaru</h2><p class="wallet-panel-subtitle">Pembayaran dan isi saldo terakhir.</p></div><div class="activity-head-actions"><div class="activity-filters" role="group" aria-label="Filter aktivitas"><button type="button" class="is-active" data-activity-filter="all">Semua</button><button type="button" data-activity-filter="topup">Isi saldo</button><button type="button" data-activity-filter="payment">Pembayaran</button></div><a class="wallet-panel-link" href="{{ route('siswa.riwayat.index') }}">Detail <i class="fas fa-arrow-right"></i></a></div></div>
                     <div class="wallet-list activity-list">
                         @forelse($recentActivities as $activity)
                             @php $activityType = $activity['type']; @endphp
-                            <div class="activity-item"><span class="activity-icon activity-icon-{{ $activityType }}"><i class="fas {{ $activityType === 'topup' ? 'fa-arrow-down' : ($activityType === 'cooperative' ? 'fa-basket-shopping' : 'fa-receipt') }}"></i></span><div class="activity-copy"><strong>{{ $activity['title'] }}</strong><small>{{ $activityType === 'topup' ? 'Isi saldo · '.ucfirst($activity['method']) : ucfirst($activity['method']) }}</small></div><div class="activity-meta"><strong>Rp{{ number_format((float) $activity['amount'], 0, ',', '.') }}</strong><small>{{ $activity['date'] ? \Illuminate\Support\Carbon::parse($activity['date'])->format('d M, H:i') : '-' }}</small></div></div>
+                            <div class="activity-item" data-activity-type="{{ $activityType === 'topup' ? 'topup' : 'payment' }}"><span class="activity-icon activity-icon-{{ $activityType }}"><i class="fas {{ $activityType === 'topup' ? 'fa-arrow-down' : ($activityType === 'cooperative' ? 'fa-basket-shopping' : 'fa-receipt') }}"></i></span><div class="activity-copy"><strong>{{ $activity['title'] }}</strong><small>{{ $activityType === 'topup' ? 'Isi saldo · '.ucfirst($activity['method']) : ucfirst($activity['method']) }}</small></div><div class="activity-meta"><strong>Rp{{ number_format((float) $activity['amount'], 0, ',', '.') }}</strong><small>{{ $activity['date'] ? \Illuminate\Support\Carbon::parse($activity['date'])->format('d M, H:i') : '-' }}</small></div></div>
                         @empty <div class="wallet-empty"><i class="fas fa-clock-rotate-left"></i><strong>Belum ada aktivitas</strong><span>Transaksi terbaru akan muncul di sini.</span></div>@endforelse
                     </div>
                 </section>
@@ -78,7 +82,12 @@
             <div class="wallet-info-strip"><i class="fas fa-circle-info"></i><div><strong>Dompet digital sekolah</strong><span>Gunakan saldo untuk membayar tagihan siswa dan transaksi koperasi tanpa uang tunai.</span></div></div>
         </div></main>
     </div>
-    <script>document.querySelectorAll('.topup-presets button').forEach(function(button){button.addEventListener('click',function(){const input=document.getElementById('topupAmount');if(input){input.value=button.dataset.amount;input.focus();}});});</script>
+    <script>
+        document.querySelectorAll('.topup-presets button').forEach(function(button){button.addEventListener('click',function(){const input=document.getElementById('topupAmount');if(input){input.value=button.dataset.amount;input.focus();}});});
+        const billChecks=[...document.querySelectorAll('.wallet-bill-checkbox')], payButton=document.getElementById('walletPayButton'), payHint=document.getElementById('walletPaymentHint');
+        function updateBillPayment(){const selected=billChecks.filter(function(item){return item.checked;}); if(payButton){payButton.disabled=selected.length===0;} if(payHint){payHint.textContent=selected.length?selected.length+' tagihan dipilih':'Pilih tagihan yang ingin dibayar.';}}
+        billChecks.forEach(function(item){item.addEventListener('change',updateBillPayment);});
+        document.querySelectorAll('[data-activity-filter]').forEach(function(button){button.addEventListener('click',function(){document.querySelectorAll('[data-activity-filter]').forEach(function(item){item.classList.remove('is-active');});button.classList.add('is-active');const filter=button.dataset.activityFilter;document.querySelectorAll('[data-activity-type]').forEach(function(item){item.hidden=filter!=='all'&&item.dataset.activityType!==filter;});});});
+    </script>
 </body>
 </html>
-
