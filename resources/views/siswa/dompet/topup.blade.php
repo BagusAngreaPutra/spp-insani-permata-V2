@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Status Top Up - Permata Insani</title>
     <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
-    <link href="{{ asset('css/wallet-pages.css') }}?v=20261112-1" rel="stylesheet">
+    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-2" rel="stylesheet">
 </head>
 <body class="wallet-page">
     @include('layouts.sidebar-siswa')

@@ -43,3 +43,7 @@
 .wallet-page .content-container{max-width:none;width:calc(100% - 64px);margin-left:32px;margin-right:32px}
 .wallet-page .dashboard-header{max-width:980px}
 @media(max-width:900px){.wallet-page .content-container{width:auto;margin-left:0;margin-right:0}}
+/* Override the shell width for the wallet workspace */
+.wallet-page .dashboard-content{width:100% !important;max-width:none !important;margin:0 !important}
+.wallet-page .dashboard-content .content-container{width:calc(100% - 64px) !important;max-width:none !important;margin-left:32px !important;margin-right:32px !important}
+@media(max-width:900px){.wallet-page .dashboard-content .content-container{width:100% !important;margin-left:0 !important;margin-right:0 !important}}
