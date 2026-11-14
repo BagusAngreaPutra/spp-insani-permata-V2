@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Keuangan Siswa - Permata Insani</title>
     <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
-    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-8" rel="stylesheet">
+    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-9" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="wallet-page">
@@ -20,6 +20,13 @@
 
             @if(session('success'))<div class="wallet-alert wallet-alert-success"><i class="fas fa-circle-check"></i>{{ session('success') }}</div>@endif
             @if($errors->any())<div class="wallet-alert wallet-alert-danger"><i class="fas fa-triangle-exclamation"></i>{{ $errors->first() }}</div>@endif
+
+            <div class="wallet-priority-strip" aria-label="Ringkasan kewajiban">
+                <div class="priority-item"><span class="priority-icon priority-icon-warning"><i class="fas fa-receipt"></i></span><div><small>Total perlu dibayar</small><strong>Rp{{ number_format((float) $totalDue, 0, ',', '.') }}</strong></div></div>
+                <div class="priority-divider"></div>
+                <div class="priority-item"><span class="priority-icon priority-icon-blue"><i class="fas fa-calendar-day"></i></span><div><small>Jatuh tempo terdekat</small><strong>{{ $nextDue ? ($nextDue['bill']->tanggal_jatuh_tempo?->format('d M Y') ?? 'Belum ditentukan') : 'Tidak ada tagihan' }}</strong></div></div>
+                <div class="priority-spacer"></div><a class="priority-link" href="#tagihan-section">Lihat tagihan <i class="fas fa-arrow-right"></i></a>
+            </div>
 
             <section class="wallet-top-section" aria-labelledby="wallet-title">
                 <div class="wallet-hero">

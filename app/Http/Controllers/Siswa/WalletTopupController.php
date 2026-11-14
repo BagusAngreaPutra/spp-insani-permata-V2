@@ -28,11 +28,6 @@ class WalletTopupController extends Controller
     {
         $student = $request->user('siswa');
         $account = $this->wallets->getOrCreateAccount($student);
-        $topups = WalletTopup::where('wallet_account_id', $account->getKey())
-            ->latest('id')
-            ->paginate(10)
-            ->withQueryString();
-
         $academicYearData = TahunAjaran::validPeriods();
         $selectedTahunAjaran = $academicYearData->firstWhere('aktif', true)
             ?? $academicYearData->firstWhere('id', $student->tahun_ajaran_id)
@@ -45,6 +40,14 @@ class WalletTopupController extends Controller
             ->get()
             ->filter(fn (Tagihan $tagihan) => $periodReconciler->belongsToConfiguredPeriod($tagihan))
             ->values();
+
+        $billSummary = $tagihanSaya->map(function (Tagihan $tagihan): array {
+            $paid = (float) $tagihan->pembayaran->sum('jumlah_bayar') + (float) $tagihan->pembayaran->sum('diskon');
+            return ['bill' => $tagihan, 'remaining' => max(0, (float) $tagihan->nominal - $paid)];
+        });
+        $unpaidBills = $billSummary->filter(fn (array $item) => $item['remaining'] > 0 && $item['bill']->is_active);
+        $totalDue = $unpaidBills->sum('remaining');
+        $nextDue = $unpaidBills->sortBy(fn (array $item) => $item['bill']->tanggal_jatuh_tempo?->timestamp ?? PHP_INT_MAX)->first();
 
         $recentActivities = Pembayaran::with('tagihan')
             ->where('siswa_id', $student->id)
@@ -83,7 +86,7 @@ class WalletTopupController extends Controller
                 ])
         )->sortByDesc('date')->take(6)->values();
 
-        return view('siswa.dompet.index', compact('account', 'topups', 'tagihanSaya', 'recentActivities', 'selectedTahunAjaran'));
+        return view('siswa.dompet.index', compact('account', 'tagihanSaya', 'recentActivities', 'selectedTahunAjaran', 'totalDue', 'nextDue'));
     }
 
     public function store(Request $request): RedirectResponse
