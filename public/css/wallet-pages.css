@@ -61,6 +61,6 @@
 @media(max-width:1050px){.wallet-page .wallet-overview-row{grid-template-columns:1fr}.wallet-page .wallet-mini-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.wallet-page .wallet-content-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.wallet-page .wallet-overview-row,.wallet-page .wallet-mini-stats{grid-template-columns:1fr}.wallet-page .wallet-topup-bar{align-items:stretch;flex-direction:column;gap:14px}.wallet-page .wallet-topup-bar .wallet-form{align-items:stretch;flex-direction:column}.wallet-page .wallet-topup-bar .wallet-form label{max-width:none;width:100%}.wallet-page .wallet-topup-bar .wallet-form .btn{width:100%}.wallet-page .wallet-content-grid{display:block}.wallet-page .wallet-content-grid .wallet-panel{margin-bottom:14px}.wallet-page .wallet-list{padding-left:15px;padding-right:15px}.wallet-page .bill-item,.wallet-page .activity-item{align-items:flex-start}.wallet-page .bill-amount,.wallet-page .activity-meta{max-width:135px}}
 /* Final full-width override: matches the application shell specificity */
-body:has(.app-sidebar) .wallet-page .dashboard-content{width:100% !important;max-width:none !important;margin:0 !important}
-body:has(.app-sidebar) .wallet-page .dashboard-content .content-container{width:calc(100% - 64px) !important;max-width:none !important;margin:0 32px !important}
-@media(max-width:900px){body:has(.app-sidebar) .wallet-page .dashboard-content .content-container{width:100% !important;margin:0 !important}}
+body.wallet-page:has(.app-sidebar) .dashboard-content{width:100% !important;max-width:none !important;margin:0 !important}
+body.wallet-page:has(.app-sidebar) .dashboard-content .content-container{width:calc(100% - 64px) !important;max-width:none !important;margin:0 32px !important}
+@media(max-width:900px){body.wallet-page:has(.app-sidebar) .dashboard-content .content-container{width:100% !important;margin:0 !important}}
