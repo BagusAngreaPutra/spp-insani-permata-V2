@@ -39,3 +39,7 @@
 .wallet-page .wallet-form input,.wallet-page .wallet-form .btn{height:46px}
 .wallet-page .wallet-form input{font-size:13px}
 .wallet-page .wallet-form .btn{padding:0 18px;font-size:12px}
+/* Wide workspace refinement */
+.wallet-page .content-container{max-width:none;width:calc(100% - 64px);margin-left:32px;margin-right:32px}
+.wallet-page .dashboard-header{max-width:980px}
+@media(max-width:900px){.wallet-page .content-container{width:auto;margin-left:0;margin-right:0}}
