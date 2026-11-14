@@ -67,3 +67,14 @@
 body.wallet-page:has(.app-sidebar) .dashboard-content{width:100% !important;max-width:none !important;margin:0 !important}
 body.wallet-page:has(.app-sidebar) .dashboard-content .content-container{width:calc(100% - 64px) !important;max-width:none !important;margin:0 32px !important}
 @media(max-width:900px){body.wallet-page:has(.app-sidebar) .dashboard-content .content-container{width:100% !important;margin:0 !important}}
+/* Interaction and spacing polish */
+.wallet-page .wallet-quick-action{padding-left:20px;padding-right:20px}
+.wallet-page .wallet-quick-action .quick-icon{margin-left:2px}
+.wallet-page .wallet-mini-stats .stat-card{padding-left:20px;padding-right:20px;gap:14px}
+.wallet-page .wallet-mini-stats .stat-icon{margin-left:1px}
+.wallet-page .wallet-topup-icon{width:40px;height:40px;flex-basis:40px;margin-left:2px;font-size:15px}
+.wallet-page .wallet-topup-bar .wallet-form label{position:relative;padding-bottom:25px}
+.wallet-page .topup-presets{position:absolute;left:0;bottom:0;display:flex;gap:5px}
+.wallet-page .topup-presets button{padding:3px 8px;color:#1d6b4c;background:#eaf7ef;border:1px solid #d1ebda;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer}
+.wallet-page .topup-presets button:hover{background:#d9f1e2}
+@media(max-width:700px){.wallet-page .wallet-topup-bar .wallet-form label{padding-bottom:0}.wallet-page .topup-presets{position:static;margin-top:6px}}

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Keuangan Siswa - Permata Insani</title>
     <link href="{{ asset('css/permata-student-dashboard.css') }}?v=20260813-2" rel="stylesheet">
-    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-6" rel="stylesheet">
+    <link href="{{ asset('css/wallet-pages.css') }}?v=20261114-7" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="wallet-page">
@@ -42,10 +42,10 @@
                 </div>
 
                 <div class="wallet-topup-bar" id="topup-form">
-                    <div class="wallet-topup-copy"><span class="wallet-topup-icon"><i class="fas fa-arrow-down-to-bracket"></i></span><div><strong>Isi saldo dompet</strong><small>Gunakan gateway pembayaran untuk menambah saldo.</small></div></div>
+                    <div class="wallet-topup-copy"><span class="wallet-topup-icon"><i class="fas fa-circle-plus"></i></span><div><strong>Isi saldo dompet</strong><small>Gunakan gateway pembayaran untuk menambah saldo.</small></div></div>
                     <form method="POST" action="{{ route('siswa.dompet.topup.store') }}" class="wallet-form">
                         @csrf
-                        <label><span class="sr-only">Nominal isi saldo</span><input type="number" name="amount" min="10000" max="5000000" step="1000" required class="form-control" placeholder="Nominal, minimal Rp10.000" value="{{ old('amount') }}"></label>
+                        <label><span class="sr-only">Nominal isi saldo</span><input id="topupAmount" type="number" name="amount" min="10000" max="5000000" step="1000" required class="form-control" placeholder="Nominal, minimal Rp10.000" value="{{ old('amount') }}"><span class="topup-presets"><button type="button" data-amount="25000">Rp25rb</button><button type="button" data-amount="50000">Rp50rb</button><button type="button" data-amount="100000">Rp100rb</button><button type="button" data-amount="250000">Rp250rb</button></span></label>
                         <button type="submit" class="btn btn-primary"><i class="fas fa-arrow-right"></i> Lanjutkan</button>
                     </form>
                 </div>
@@ -78,5 +78,7 @@
             <div class="wallet-info-strip"><i class="fas fa-circle-info"></i><div><strong>Dompet digital sekolah</strong><span>Gunakan saldo untuk membayar tagihan siswa dan transaksi koperasi tanpa uang tunai.</span></div></div>
         </div></main>
     </div>
+    <script>document.querySelectorAll('.topup-presets button').forEach(function(button){button.addEventListener('click',function(){const input=document.getElementById('topupAmount');if(input){input.value=button.dataset.amount;input.focus();}});});</script>
 </body>
 </html>
+
