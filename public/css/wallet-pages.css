@@ -22,3 +22,20 @@
 .wallet-page .wallet-quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 18px}.wallet-page .wallet-quick-action{display:flex;align-items:center;gap:11px;min-height:72px;padding:13px 14px;color:#344054;background:#fff;border:1px solid #e4e7ec;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(16,24,40,.035);transition:transform .18s ease,box-shadow .18s ease}.wallet-page .wallet-quick-action:hover{color:#1d6b4c;transform:translateY(-2px);box-shadow:0 9px 20px rgba(16,24,40,.08)}.wallet-page .wallet-quick-action>span:nth-child(2){flex:1}.wallet-page .wallet-quick-action strong,.wallet-page .wallet-quick-action small{display:block}.wallet-page .wallet-quick-action strong{font-size:12px}.wallet-page .wallet-quick-action small{margin-top:3px;color:#98a2b3;font-size:10px}.wallet-page .wallet-quick-action>i{color:#98a2b3;font-size:10px}.wallet-page .quick-icon,.wallet-page .stat-icon{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;font-size:13px}.wallet-page .quick-icon-green{color:#1d6b4c;background:#e6f5ec}.wallet-page .quick-icon-blue{color:#2876c7;background:#e8f2ff}.wallet-page .quick-icon-purple{color:#7450b8;background:#f1ebff}
 .wallet-page .stat-card{display:flex;align-items:center;gap:12px}.wallet-page .stat-icon{color:#946200;background:#fff4cc}.wallet-page .stat-icon-soft{color:#1d6b4c;background:#e6f5ec}.wallet-page .stat-value-small{font-size:18px}.wallet-page .stat-caption{margin-top:2px;color:#98a2b3;font-size:10px}.wallet-page .wallet-panel-subtitle{margin:4px 0 0;color:#98a2b3;font-size:10px}.wallet-page .wallet-limit{color:#1d6b4c;background:#e6f5ec;border-radius:99px;padding:6px 9px;font-size:10px;font-weight:700}.wallet-page .wallet-limit i{margin-right:4px}.wallet-page .wallet-panel-link{color:#1d6b4c;font-size:10px;font-weight:700;text-decoration:none}.wallet-page .wallet-panel-link i{margin-left:4px}.wallet-page .wallet-row-meta{display:block;margin-top:3px;color:#98a2b3;font-size:10px}.wallet-page .wallet-alert{display:flex;align-items:center;gap:8px}.wallet-page .wallet-info-strip{display:flex;align-items:flex-start;gap:12px;padding:15px 17px;color:#475467;background:#eef8f2;border:1px solid #d7efdf;border-radius:12px;font-size:11px}.wallet-page .wallet-info-strip>i{margin-top:2px;color:#25845d}.wallet-page .wallet-info-strip strong,.wallet-page .wallet-info-strip span{display:block}.wallet-page .wallet-info-strip span{margin-top:3px;color:#667085;font-size:10px}
 @media(max-width:700px){.wallet-page .dashboard-content{padding:20px 14px 36px}.wallet-page .dashboard-header,.wallet-page .wallet-hero{align-items:flex-start;flex-direction:column}.wallet-page .wallet-hero{padding:20px}.wallet-page .wallet-card-top{width:100%;margin-bottom:25px}.wallet-page .wallet-hero-value{font-size:26px}.wallet-page .wallet-hero-bottom{width:100%;align-items:flex-start;flex-direction:column;gap:14px}.wallet-page .wallet-quick-actions{grid-template-columns:1fr}.wallet-page .stats-grid{grid-template-columns:1fr}.wallet-page .wallet-panel{overflow-x:auto}.wallet-page .wallet-panel-head,.wallet-page .wallet-panel-body{min-width:620px}.wallet-page .wallet-table{min-width:620px}}
+/* Wallet visual refinement */
+.wallet-page .content-container{max-width:1320px}
+.wallet-page .wallet-hero{display:block;min-height:214px;padding:25px 29px}
+.wallet-page .wallet-card-top{margin-bottom:32px}
+.wallet-page .wallet-chip,.wallet-page .wallet-card-id{font-size:11px}
+.wallet-page .wallet-hero-label{font-size:12px}
+.wallet-page .wallet-hero-value{font-size:36px}
+.wallet-page .wallet-hero-bottom{margin-top:19px}
+.wallet-page .wallet-hero-note{font-size:12px}
+.wallet-page .wallet-hero .btn{padding:10px 15px;font-size:12px}
+.wallet-page .wallet-panel-head{padding:19px 22px}
+.wallet-page .wallet-panel-body{padding:22px}
+.wallet-page .wallet-table th{font-size:11px}
+.wallet-page .wallet-table td{font-size:13px}
+.wallet-page .wallet-form input,.wallet-page .wallet-form .btn{height:46px}
+.wallet-page .wallet-form input{font-size:13px}
+.wallet-page .wallet-form .btn{padding:0 18px;font-size:12px}
